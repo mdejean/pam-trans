@@ -3,6 +3,7 @@
 #include <stdbool.h>
 
 #include "upsample.h"
+#include "sample.h"
 
 //no malloc
 sample_t pulse_storage[MAX_PULSE_LENGTH];

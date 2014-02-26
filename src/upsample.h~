@@ -2,7 +2,6 @@
 #define UPSAMPLE_H
 
 #include <stddef.h>
-#include "sample.h"
 
 #define MAX_PULSE_LENGTH 1000
 #define MAX_PULSE_SYMBOLS 32

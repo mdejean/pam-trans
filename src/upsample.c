@@ -1,7 +1,11 @@
-#include <math.h>
 #include <string.h> //memset memcpy
 #include <stdbool.h>
+#include <math.h>
+#ifndef M_PI
+#define M_PI (4.0*atan(1))
+#endif
 
+#include "sample.h"
 #include "upsample.h"
 
 //no malloc
@@ -90,3 +94,4 @@ size_t upsample_convolve(
   memcpy(state->edge_symbols, &symbols[i - state->overlap], sizeof(sample_t) * state->overlap);
   return num_symbols - state->overlap;
 }
+

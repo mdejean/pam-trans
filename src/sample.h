@@ -6,7 +6,7 @@
 
 typedef int32_t sample_t; //32 bit signed fixed point i.e. divided by 2^31
 
-inline sample_t s_multiply(sample_t a, sample_t b) {
+sample_t s_multiply(sample_t a, sample_t b) {
   return (sample_t)( ( (int64_t)a * b ) >> 32);
 }
 

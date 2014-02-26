@@ -1,4 +1,5 @@
-arm-none-eabi-gcc -Wall -march=armv7-m -mcpu=cortex-m3 -mthumb -O2 -Tlinker.ld \
+arm-none-eabi-gcc -Wall -Wno-strict-aliasing -fomit-frame-pointer \
+-march=armv7-m -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mthumb -Os -fdata-sections -ffunction-sections  \
 -I. \
 -I../../Libraries/CMSIS/Include \
 -I../../Libraries/CMSIS/ST/STM32F4xx/Include \
@@ -18,5 +19,5 @@ arm-none-eabi-gcc -Wall -march=armv7-m -mcpu=cortex-m3 -mthumb -O2 -Tlinker.ld \
 ../../Utilities/STM32F4-Discovery/*.c \
 ../../Libraries/STM32F4xx_StdPeriph_Driver/src/*.c \
 ../../Libraries/CMSIS/ST/STM32F4xx/Source/Templates/gcc_ride7/startup_stm32f4xx.s \
-./*.c -o Binary/test.elf
+./*.c -Tlinker.ld -nostartfiles -o test.elf -Wl,--gc-sections -g
 

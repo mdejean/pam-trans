@@ -10,8 +10,8 @@ ENTRY(Reset_Handler)
 /* Specify the memory areas */
 MEMORY
 {
-  FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 0x10000 /*64K*/
-  RAM (xrw)       : ORIGIN = 0x20000000, LENGTH = 0x02000 /*8K*/
+  FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 0x100000 /*1024K*/
+  RAM (xrw)       : ORIGIN = 0x20000000, LENGTH = 0x030000 /*192K*/
 }
  
 /* define stack size and heap size here */
@@ -21,6 +21,7 @@ heap_size = 0;
 /* define beginning and ending of stack */
 _stack_start = ORIGIN(RAM)+LENGTH(RAM);
 _stack_end = _stack_start - stack_size;
+_estack = 0x20020000;
 
 /* Define output sections */
 SECTIONS

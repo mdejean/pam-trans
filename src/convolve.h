@@ -1,5 +1,5 @@
-#ifndef UPSAMPLE_H
-#define UPSAMPLE_H
+#ifndef CONVOLVE_H
+#define CONVOLVE_H
 
 #include <stddef.h>
 #include "sample.h"
@@ -7,7 +7,7 @@
 #define MAX_PULSE_LENGTH 1000
 #define MAX_PULSE_SYMBOLS 32
 
-typedef struct upsample_convolve_state_ {
+typedef struct convolve_state_ {
   float beta; //square root raised cosine parameter
   size_t overlap; //number of symbols that each pulse overlaps (1/2 width in symbols)
   size_t M; //oversampling factor
@@ -18,13 +18,13 @@ typedef struct upsample_convolve_state_ {
 } upsample_convolve_state;
 
 //Generate the pulse shape
-bool upsample_convolve_init(
-    upsample_convolve_state* state, 
+bool convolve_init_srrc(
+    convolve_state* state, 
     float beta, 
     size_t overlap,
     size_t M);
 
-/*upsample_convolve - convert symbols (at baudrate) to the PAM envelope (at Fs)
+/*convolve - convert symbols (at baudrate) to the PAM envelope (at Fs)
  state - convolver settings and state
  symbols - symbols to convert
  num_symbols - the maximum number symbols to convert
@@ -35,8 +35,8 @@ RETURNS: the actual number of symbols converted
   affected by the symbols in the next block
 
 */
-size_t upsample_convolve(
-    upsample_convolve_state* state, 
+size_t convolve(
+    convolve_state* state, 
     const sample_t* symbols, 
     size_t num_symbols, 
     sample_t* envelope,

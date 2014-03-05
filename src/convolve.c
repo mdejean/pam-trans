@@ -6,14 +6,14 @@
 #endif
 
 #include "sample.h"
-#include "upsample.h"
+#include "convolve.h"
 
 //no malloc
 sample_t pulse_storage[MAX_PULSE_LENGTH];
 sample_t edge_symbols_storage[MAX_PULSE_SYMBOLS]; //no need to be skimpy
 
-bool upsample_convolve_init(
-    upsample_convolve_state* state, 
+bool convolve_init_srrc(
+    convolve_state* state, 
     float beta, 
     size_t overlap,
     size_t M) {
@@ -42,7 +42,7 @@ bool upsample_convolve_init(
 //Make the envelope from the symbols (upsampling and then convolution w/ pulse shape)
 
 size_t upsample_convolve(
-    upsample_convolve_state* state, 
+    convolve_state* state, 
     const sample_t* symbols, 
     size_t num_symbols, 
     sample_t* envelope,

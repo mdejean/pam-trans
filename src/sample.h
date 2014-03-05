@@ -4,6 +4,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define SAMPLE_MAX INT32_MAX
+#define SAMPLE_MIN INT32_MIN
+
 typedef int32_t sample_t; //32 bit signed fixed point i.e. divided by 2^31
 
 sample_t s_multiply(sample_t a, sample_t b) {

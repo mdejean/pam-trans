@@ -6,6 +6,8 @@
 
 #include "sample.h"
 
+#define UPCONVERT_MAX_N 2000
+
 typedef struct upconvert_state_ {
   size_t M; //carrier samples per envelope sample
   size_t N; //carrier length in samples
@@ -23,11 +25,10 @@ envelope - envelope to mix
 envelope_len - number of envelope samples to mix
 signal - buffer in which to put the IF signal
 signal_s - size of that buffer
-
 */
 size_t upconvert(upconvert_state* s, 
   const sample_t* envelope, 
-  size_t envelope_len, //
+  size_t envelope_len, 
   sample_t* signal,
   size_t signal_s);
 

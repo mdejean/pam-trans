@@ -18,7 +18,7 @@ bool upconvert_init(upconvert_state* s, size_t M, size_t N) {
   s->phase = 0;
   s->carrier = carrier_storage;
   for (size_t i = 0; i < N; i++) {
-    s->carrier[i] = (sample_t)( SAMPLE_MAX * cos((i*2.0*M_PI) / N) );
+    s->carrier[i] = double_to_sample(cos((i*2.0*M_PI) / N));
   }
 }
 

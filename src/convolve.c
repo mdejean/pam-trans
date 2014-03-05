@@ -33,7 +33,7 @@ bool convolve_init_srrc(
   float k;
   for (size_t i = 0; i < state->pulse_shape_len; i++) {
     k = (float)i - state->pulse_shape_len/2 + 1e-5; //should actually use sinc instead of this 1e-5 silliness
-    state->pulse_shape[i] = float_to_sample((cos((1+beta) * M_PI * k/M) + sin((1-beta) * M_PI * k/M)/(4*beta*k/M) )
+    state->pulse_shape[i] = double_to_sample((cos((1+beta) * M_PI * k/M) + sin((1-beta) * M_PI * k/M)/(4*beta*k/M) )
       / (M_PI*(1-16*(beta*k/M)*(beta*k/M))));
   }
   return true;

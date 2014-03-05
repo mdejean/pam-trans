@@ -41,7 +41,7 @@ bool convolve_init_srrc(
   
 //Make the envelope from the symbols (upsampling and then convolution w/ pulse shape)
 
-size_t upsample_convolve(
+size_t convolve(
     convolve_state* state, 
     const sample_t* symbols, 
     size_t num_symbols, 

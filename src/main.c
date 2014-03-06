@@ -1,5 +1,6 @@
 #include <stdio.h>
-#include <string.h> //
+#include <string.h>
+#include <stdlib.h>
 
 #include "upconvert.h"
 #include "convolve.h"
@@ -36,7 +37,7 @@ int main(int argc, char** argv) {
   size_t data_len = test_message_len + (test_message_len/100 + 1) * strlen(header);
   uint8_t* data = malloc(data_len); 
   size_t symbols_len = 4*data_len;
-  sample_t* symbols = malloc(symbols_len);
+  sample_t* symbols = malloc(symbols_len * sizeof(sample_t));
   
   sample_t envelope[2048];
   sample_t signal[2048];
@@ -45,12 +46,15 @@ int main(int argc, char** argv) {
   
   size_t symbols_used = encode_data(&encoder, data, data_used, symbols, symbols_len);
   
-  for (size_t i = 0; i < symbols_used; ) {
-    size_t symbols_convolved = convolve(&convolver, &symbols[i], 2048/100, envelope, 2048);
+  for (size_t i = 0; i < symbols_used - 4; ) { //last width symbols can only be written with some bogus data
+    size_t symbols_convolved = convolve(&convolver, 
+      &symbols[i], (symbols_used - i < 20) ? symbols_used - i : 20, 
+      envelope, 2048);
     i += symbols_convolved;
-    //really need to be asking convolve for how much it used rather than *100 here
-    size_t signal_used = upconvert(&upconverter, &envelope, symbols_convolved * 100, &signal, 2048);
-    
+    //really need to be asking convolve for how much signal it used rather than *100 here
+    size_t signal_used = upconvert(&upconverter, envelope, symbols_convolved * 100, signal, 2048);
+    printf("turned %u symbols into %u samples (%u/%u)\n", 
+      symbols_convolved, signal_used, i, symbols_used);
     fwrite(signal, sizeof(signal[0]), signal_used, test_file);
   }
   

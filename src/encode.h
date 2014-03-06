@@ -1,7 +1,9 @@
 #ifndef ENCODE_H
 #define ENCODE_H
 
+#include <stdbool.h>
 #include "sample.h"
+
 
 typedef struct encode_state_ {
   size_t frame_len; //number of message *bytes* in each frame
@@ -11,8 +13,9 @@ typedef struct encode_state_ {
   size_t end_framing_len;
 } encode_state;
 
-bool encode_init(size_t frame_len,  
-    const uint8_t* start_framing;
+bool encode_init(encode_state* s,
+    size_t frame_len,  
+    const uint8_t* start_framing,
     size_t start_framing_len,
     const uint8_t* end_framing,
     size_t end_framing_len);

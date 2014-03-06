@@ -9,20 +9,22 @@
 
 typedef int32_t sample_t; //32 bit signed fixed point i.e. divided by 2^31
 
-sample_t s_multiply(sample_t a, sample_t b) {
+#ifndef SAMPLE_NO_INLINE
+inline sample_t s_multiply(sample_t a, sample_t b) {
   return (sample_t)( ( (int64_t)a * b ) >> 32);
 }
 
-sample_t float_to_sample(float a) {
+inline sample_t float_to_sample(float a) {
   if (a >= 1) a = 1;
   if (a <= -1) a = -1;
   return (sample_t)( a * SAMPLE_MAX );
 }
 
-sample_t double_to_sample(double a) {
+inline sample_t double_to_sample(double a) {
   if (a >= 1) a = 1;
   if (a <= -1) a = -1;
   return (sample_t)( a * SAMPLE_MAX );
 }
+#endif
 
 #endif

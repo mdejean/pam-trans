@@ -20,6 +20,7 @@ bool upconvert_init(upconvert_state* s, size_t M, size_t N) {
   for (size_t i = 0; i < N; i++) {
     s->carrier[i] = double_to_sample(cos((i*2.0*M_PI) / N));
   }
+  return true;
 }
 
 size_t upconvert(upconvert_state* s, 

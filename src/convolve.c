@@ -1,6 +1,8 @@
 #include <string.h> //memset memcpy
 #include <stdbool.h>
 #include <math.h>
+#include <string.h>
+
 #ifndef M_PI
 #define M_PI (4.0*atan(1))
 #endif
@@ -28,7 +30,7 @@ bool convolve_init_srrc(
   state->edge_symbols = edge_symbols_storage;
   state->pulse_shape = pulse_storage;
   
-  memset(state->edge_symbols, 0, overlap);
+  memset(state->edge_symbols, 0, overlap * sizeof(sample_t));
   
   float k;
   for (size_t i = 0; i < state->pulse_shape_len; i++) {

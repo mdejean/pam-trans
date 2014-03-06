@@ -2,6 +2,7 @@
 #define CONVOLVE_H
 
 #include <stddef.h>
+#include <stdbool.h>
 #include "sample.h"
 
 #define MAX_PULSE_LENGTH 1000
@@ -15,7 +16,7 @@ typedef struct convolve_state_ {
   sample_t* pulse_shape;
   size_t pulse_shape_len; //2 * overlap * M
   sample_t* edge_symbols; //overlap symbols from the previous symbol block
-} upsample_convolve_state;
+} convolve_state;
 
 //Generate the pulse shape
 bool convolve_init_srrc(

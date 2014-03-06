@@ -1,8 +1,10 @@
-#include <stdlib.h> //for memcpy
+#include <string.h> //for memcpy
 #include "encode.h"
 
-bool encode_init(size_t frame_len,  
-    const uint8_t* start_framing;
+bool encode_init(
+    encode_state* s,
+    size_t frame_len,  
+    const uint8_t* start_framing,
     size_t start_framing_len,
     const uint8_t* end_framing,
     size_t end_framing_len) {
@@ -10,7 +12,8 @@ bool encode_init(size_t frame_len,
   s->start_framing     = start_framing; 
   s->start_framing_len = start_framing_len;   
   s->end_framing       = end_framing; 
-  s->end_framing_len   = end_framing_len;  
+  s->end_framing_len   = end_framing_len;
+  return true;
 }
 
 size_t frame_message(
@@ -43,7 +46,7 @@ size_t frame_message(
   return data_moving - data;
 }
 
-size_t encode_message(
+size_t encode_data(
     encode_state* s,
     const uint8_t* data, 
     size_t data_len, 

@@ -57,6 +57,7 @@ int main(int argc, char** argv) {
            convolver.pulse_shape_len * sizeof(sample_t));
 
   for (size_t i = 0; i < symbols_used - 4; ) { //last width symbols can only be written with some bogus data
+    memset(state->edge_symbols, 0, overlap * sizeof(sample_t));
     size_t symbols_convolved = convolve(&convolver,
       &symbols[i], (symbols_used - i < 20) ? symbols_used - i : 20,
       envelope, 2048);

@@ -30,8 +30,6 @@ bool convolve_init_srrc(
   state->edge_symbols = edge_symbols_storage;
   state->pulse_shape = pulse_storage;
 
-  memset(state->edge_symbols, 0, overlap * sizeof(sample_t));
-
   float k;
   for (size_t i = 0; i < state->pulse_shape_len; i++) {
     k = (float)i - state->pulse_shape_len/2 + 1e-5; //should actually use sinc instead of this 1e-5 silliness

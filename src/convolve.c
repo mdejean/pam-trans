@@ -55,6 +55,7 @@ size_t convolve(
     size_t num_symbols,
     sample_t* envelope,
     size_t envelope_s) {//TODO: envelope_s should be used, or at least asserted!
+  memset(envelope, 0, envelope_s*sizeof(*envelope));
   //first deal with the symbols from the previous block
   for (int i = 0; i < state->overlap; i++) {
     //       how much of the pulse makes it into this block

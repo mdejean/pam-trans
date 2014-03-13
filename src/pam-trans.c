@@ -50,8 +50,21 @@ size_t fill_length;
 bool stalled = false;
 
 uint8_t* being_transmitted = region_two;
+
+
+void do_dma(uint8_t* buffer, size_t length) {
+  DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)buffer;
+  DMA_InitStructure.DMA_BufferSize = (uint32_t)length;
+  DMA_Init(GPIO_DMA_STREAM, &DMA_InitStructure);
+
+
+  /* DMA Stream enable */
+  DMA_Cmd(DMA_STREAM, ENABLE);
+}
+
+
 //called on dma completion
-void dma_interrupt() {
+void swap_buffers() {
   if (fill_length == 0) { //we're not running fast enough!
     //set_fault_light()
     stalled = true;
@@ -93,22 +106,33 @@ void gpio_dma_init() {
 
   DMA_InitStructure.DMA_Channel = DMA_CHANNEL;
   DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)being_transmitted;
-  DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)GPIOE;
+  DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&(GPIOE->ODR) + 1; //GPIOE 8-15: 2nd byte
   DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToMemory;
   DMA_InitStructure.DMA_BufferSize = (uint32_t)fill_length;
   DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Enable;
   DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
-  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Word;
-  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Word;
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
   DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
   DMA_InitStructure.DMA_Priority = DMA_Priority_High;
   DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;
   DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_Full;
   DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
   DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
-  DMA_Init(GPIO_DMA_STREAM, &DMA_InitStructure);
+  /* Enable DMA Stream Transfer Complete interrupt */
+  DMA_ITConfig(DMA_STREAM, DMA_IT_TCIF0, ENABLE);
 
 }
+
+void DMA2_Stream0_IRQHandler(void) {
+  /* Test on DMA Stream Transfer Complete interrupt */
+  if(DMA_GetITStatus(GPIO_DMA_STREAM, DMA_IT_TCIF)) {
+    /* Clear DMA Stream Transfer Complete interrupt pending bit */
+    DMA_ClearITPendingBit(GPIO_DMA_STREAM, DMA_IT_TCIF);
+    swap_buffers();
+  }
+}
+
 
 int main(void) {
   encode_state encoder;
@@ -166,7 +190,7 @@ int main(void) {
                               being_filled,
                               OUTPUT_BUFFER_LENGTH);
       if (stalled) {
-        dma_interrupt();
+        swap_buffers();
       }
       envelope_samples_used = 0;
     }

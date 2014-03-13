@@ -11,19 +11,6 @@
 
 #define OUTPUT_BUFFER_LENGTH 2048 //8KB
 
-//set up buffers in three memory regions so DMA can take them
-// without stalling the processor
-//this has a side effect of making us unable to use
-#define USE_SECTION(a) __attribute__ ((section ((a))))
-sample_t region_one[OUTPUT_BUFFER_LENGTH] USE_SECTION("MEM_A");
-sample_t region_two[OUTPUT_BUFFER_LENGTH] USE_SECTION("MEM_B");
-//pointers to the three buffers by current use
-sample_t* being_filled = region_one;
-//how much of the buffer to transmit
-size_t fill_length;
-
-sample_t* being_transmitted = region_two;
-
 #define SRRC_OVERLAP 4
 
 #define MAX_MESSAGE_LENGTH 1000
@@ -46,27 +33,101 @@ sample_t envelope[OUTPUT_BUFFER_LENGTH];
 size_t envelope_samples_used;
 
 
+#define OUTPUT_SAMPLE_RATE 1000000
+
+#define GPIO_DMA_STREAM DMA2_Stream0
+#define GPIO_DMA_CHANNEL DMA_Channel_0
+//set up buffers in three memory regions so DMA can take them
+// without stalling the processor
+//this has a side effect of making us unable to use
+#define USE_SECTION(a) __attribute__ ((section ((a))))
+uint8_t region_one[OUTPUT_BUFFER_LENGTH] USE_SECTION("MEM_A");
+uint8_t region_two[OUTPUT_BUFFER_LENGTH] USE_SECTION("MEM_B");
+//pointers to the three buffers by current use
+uint8_t* being_filled = region_one;
+//how much of the buffer to transmit
+size_t fill_length;
+bool stalled = false;
+
+uint8_t* being_transmitted = region_two;
 //called on dma completion
 void dma_interrupt() {
   if (fill_length == 0) { //we're not running fast enough!
     //set_fault_light()
-    ((void(*)())0)();
+    stalled = true;
     return;
   } else {
-      sample_t* temp = being_filled;
-      being_filled = being_transmitted;
-      being_transmitted = temp;
+    uint8_t* temp = being_filled;
+    being_filled = being_transmitted;
+    being_transmitted = temp;
+    do_dma(being_transmitted, fill_length);
+    fill_length = 0;
+    stalled = false;
   }
-  do_dma(being_transmitted, fill_length);
-  fill_length = 0;
+}
+
+DMA_InitTypeDef  DMA_InitStructure;
+void gpio_dma_init() {
+  //set up gpio
+  GPIO_InitTypeDef  GPIO_InitStructure;
+  GPIO_InitStructure.GPIO_Pin = 0xFF00;//PE8-15
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP; //push-pull
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_Init(GPIOE, &GPIO_InitStructure);
+
+
+  //set up DMA2 to access SRAM1/2
+
+  /* Enable DMA clock */
+  RCC_AHB1PeriphClockCmd(DMA_STREAM_CLOCK, ENABLE);
+
+  /* Reset DMA Stream registers (for debug purpose) */
+  DMA_DeInit(GPIO_DMA_STREAM);
+
+  /* wait for DMA stream*/
+  while (DMA_GetCmdStatus(GPIO_DMA_STREAM) != DISABLE)
+  {
+  }
+
+  DMA_InitStructure.DMA_Channel = DMA_CHANNEL;
+  DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)being_transmitted;
+  DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)GPIOE;
+  DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToMemory;
+  DMA_InitStructure.DMA_BufferSize = (uint32_t)fill_length;
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Enable;
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Word;
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Word;
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+  DMA_InitStructure.DMA_FIFOMode = DMA_FIFOMode_Disable;
+  DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_Full;
+  DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
+  DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
+  DMA_Init(GPIO_DMA_STREAM, &DMA_InitStructure);
+
 }
 
 int main(void) {
+  encode_state encoder;
+  convolve_state convolver;
+  upconvert_state upconverter;
 
-  size_t message_length;
-  size_t symbols_length;
+  size_t message_length = 0;
+  size_t symbols_length = 0;
 
-  size_t symbols_position;
+  size_t symbols_position = 0;
+
+  size_t symbols_per_buffer = 0;
+  bool new_message = true;
+
+  encode_init(&encoder, 100, (const uint8_t*)header, strlen(header), NULL, 0);
+  convolve_init_srrc(&convolver, 0.2, 4, 100); //baudrate = 10kHz
+  upconvert_init(&upconverter, 1, 10); //carrier = 100kHz if Fs = 1MHz
+
+  gpio_dma_init();
 
   while (1) {
     if (new_message == true) {
@@ -82,12 +143,14 @@ int main(void) {
       memcpy(&symbols[symbols_length], &symbols[0], SRRC_OVERLAP * sizeof(sample_t));
       symbols_length += SRRC_OVERLAP;
       symbols_position = 0;
+
+      symbols_per_buffer = OUTPUT_BUFFER_LENGTH/convolver.M;
     }
     if (envelope_samples_used == 0) {
       symbols_position +=
         convolve(&convolver,
                  &symbols[symbols_position],
-                 (symbols_length - symbols_position < OUTPUT_BUFFER_LENGTH/convolver.M) //FIXME 20 is a magic number
+                 (symbols_length - symbols_position < )
                     ? symbols_length - symbols_position : OUTPUT_BUFFER_LENGTH/convolver.M,
                  envelope,
                  OUTPUT_BUFFER_LENGTH);
@@ -102,6 +165,9 @@ int main(void) {
                               envelope_samples_used,
                               being_filled,
                               OUTPUT_BUFFER_LENGTH);
+      if (stalled) {
+        dma_interrupt();
+      }
       envelope_samples_used = 0;
     }
   }

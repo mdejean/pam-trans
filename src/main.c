@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
   sample_t* symbols = malloc(symbols_len * sizeof(sample_t));
 
   sample_t envelope[2048];
-  sample_t signal[2048];
+  uint8_t signal[2048];
 
   size_t data_used = frame_message(&encoder, (const uint8_t*)test_message, test_message_len, data, data_len);
 
@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
            convolver.pulse_shape_len * sizeof(sample_t));
 
   for (size_t i = 0; i < symbols_used - 4; ) { //last width symbols can only be written with some bogus data
-    memset(state->edge_symbols, 0, overlap * sizeof(sample_t));
+    memset(envelope, 0, sizeof(envelope));
     size_t symbols_convolved = convolve(&convolver,
       &symbols[i], (symbols_used - i < 20) ? symbols_used - i : 20,
       envelope, 2048);

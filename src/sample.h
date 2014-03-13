@@ -25,6 +25,10 @@ inline sample_t double_to_sample(double a) {
   if (a <= -1) a = -1;
   return (sample_t)( a * SAMPLE_MAX );
 }
+
+inline uint8_t sample_to_uint8(sample_t a) {
+  return (uint8_t)(((int64_t)SAMPLE_MAX + 1 + a) >> 24);
+}
 #endif
 
 #endif

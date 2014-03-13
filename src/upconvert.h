@@ -20,16 +20,17 @@ bool upconvert_init(upconvert_state* s, size_t M, size_t N);
 //TODO: add alternate init functions for carrier frequencies other than M/N
 
 
-/*upconvert - convert amplitude envelope to carrier, also upsample
+/*upconvert - convert amplitude envelope to modulated carrier,
+  also decimate to 8bit, also optionally upsample
 envelope - envelope to mix
 envelope_len - number of envelope samples to mix
 signal - buffer in which to put the IF signal
 signal_s - size of that buffer
 */
-size_t upconvert(upconvert_state* s, 
-  const sample_t* envelope, 
-  size_t envelope_len, 
-  sample_t* signal,
+size_t upconvert(upconvert_state* s,
+  const sample_t* envelope,
+  size_t envelope_len,
+  uint8_t* signal,
   size_t signal_s);
 
 #endif

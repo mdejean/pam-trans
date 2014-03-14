@@ -1,5 +1,5 @@
 arm-none-eabi-gcc -Wall -Wno-strict-aliasing -fomit-frame-pointer \
--march=armv7-m -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mthumb -Os -fdata-sections -ffunction-sections  \
+-mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mthumb -Os -fdata-sections -ffunction-sections  \
 -I. \
 -I../../Libraries/CMSIS/Include \
 -I../../Libraries/CMSIS/ST/STM32F4xx/Include \

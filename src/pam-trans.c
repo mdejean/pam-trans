@@ -32,11 +32,11 @@ sample_t symbols[MAX_SYMBOLS_LENGTH + SRRC_OVERLAP];
 sample_t envelope[OUTPUT_BUFFER_LENGTH];
 size_t envelope_samples_used;
 
+uint32_t output_sample_rate = 1000000; //Hz = 1MHz
 
-#define OUTPUT_SAMPLE_RATE 1000000
+#define GPIO_DMA_STREAM DMA2_Stream5 //channel 6 stream 5: TIM1 update
+#define GPIO_DMA_CHANNEL DMA_Channel_6
 
-#define GPIO_DMA_STREAM DMA2_Stream0
-#define GPIO_DMA_CHANNEL DMA_Channel_0
 //set up buffers in three memory regions so DMA can take them
 // without stalling the processor
 //this has a side effect of making us unable to use
@@ -79,6 +79,17 @@ void swap_buffers() {
   }
 }
 
+void update_output_sample_rate() {
+  static TIM_TimeBaseInitTypeDef timebase;
+  /* Time base configuration */
+  timebase.TIM_Period = (SystemCoreClock / 2) / output_sample_rate; //e.g. 168 for 1MHz
+  timebase.TIM_Prescaler = 1;
+  timebase.TIM_ClockDivision = 0;
+  timebase.TIM_CounterMode = TIM_CounterMode_Up;
+
+  TIM_TimeBaseInit(TIM1, &timebase);
+}
+
 DMA_InitTypeDef  DMA_InitStructure;
 void gpio_dma_init() {
   //set up gpio
@@ -90,6 +101,12 @@ void gpio_dma_init() {
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
   GPIO_Init(GPIOE, &GPIO_InitStructure);
 
+
+  /* Set up TIM1 to generate a DMA request on overflow */
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM1, ENABLE);
+
+  update_output_sample_rate();
+  TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
 
   //set up DMA2 to access SRAM1/2
 
@@ -108,7 +125,7 @@ void gpio_dma_init() {
   DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)being_transmitted;
   DMA_InitStructure.DMA_Memory0BaseAddr = (uint32_t)&(GPIOE->ODR) + 1; //GPIOE 8-15: 2nd byte
   DMA_InitStructure.DMA_DIR = DMA_DIR_MemoryToMemory;
-  DMA_InitStructure.DMA_BufferSize = (uint32_t)fill_length;
+  DMA_InitStructure.DMA_BufferSize = 1; //send only 1 byte per request
   DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Enable;
   DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Disable;
   DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
@@ -132,7 +149,6 @@ void DMA2_Stream0_IRQHandler(void) {
     swap_buffers();
   }
 }
-
 
 int main(void) {
   encode_state encoder;

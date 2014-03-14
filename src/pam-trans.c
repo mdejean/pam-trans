@@ -53,8 +53,12 @@ uint8_t* being_transmitted = region_two;
 
 
 void do_dma(uint8_t* buffer, size_t length) {
+  DMA_Cmd(DMA_STREAM, DISABLE); //stop DMA so that we can adjust it
+
+  //probably unnecessary wait
+  while (DMA_GetCmdStatus(GPIO_DMA_STREAM) != DISABLE);
+
   DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)buffer;
-  DMA_InitStructure.DMA_BufferSize = (uint32_t)length;
   DMA_Init(GPIO_DMA_STREAM, &DMA_InitStructure);
 
 
@@ -106,7 +110,14 @@ void gpio_dma_init() {
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM1, ENABLE);
 
   update_output_sample_rate();
+  //set TIM1 MMS=010 (TRGO each update event)
   TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
+
+
+  /* Set up TIM2 to count TIM1 overflows */
+  //set TIM2 TS=000 (connect)
+
+  //set TIM2 SMS=111 (slave timer)
 
   //set up DMA2 to access SRAM1/2
 
@@ -141,13 +152,8 @@ void gpio_dma_init() {
 
 }
 
-void DMA2_Stream0_IRQHandler(void) {
-  /* Test on DMA Stream Transfer Complete interrupt */
-  if(DMA_GetITStatus(GPIO_DMA_STREAM, DMA_IT_TCIF)) {
-    /* Clear DMA Stream Transfer Complete interrupt pending bit */
-    DMA_ClearITPendingBit(GPIO_DMA_STREAM, DMA_IT_TCIF);
+void TIM2_IRQHandler(void) {
     swap_buffers();
-  }
 }
 
 int main(void) {
@@ -163,6 +169,8 @@ int main(void) {
   size_t symbols_per_buffer = 0;
   bool new_message = true;
 
+
+  size_t
   encode_init(&encoder, 100, (const uint8_t*)header, strlen(header), NULL, 0);
   convolve_init_srrc(&convolver, 0.2, 4, 100); //baudrate = 10kHz
   upconvert_init(&upconverter, 1, 10); //carrier = 100kHz if Fs = 1MHz

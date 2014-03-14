@@ -25,7 +25,7 @@ bool convolve_init_srrc(
   state->overlap = overlap;
   state->M = M;
   state->pulse_shape_len = 2 * overlap * M;
-  state->amplitude_corr = 2*(1+M_PI)/M_PI * 4.0*beta/sqrt((float)M);
+  state->amplitude_corr = (1+M_PI)/M_PI * 4.0*beta/sqrt((float)M) / 0.9;
   //singleton :(
   state->edge_symbols = edge_symbols_storage;
   memset(state->edge_symbols, 0, overlap * sizeof(sample_t));
@@ -34,7 +34,8 @@ bool convolve_init_srrc(
   float k;
   for (size_t i = 0; i < state->pulse_shape_len; i++) {
     k = (float)i - state->pulse_shape_len/2 + 1e-5; //should actually use sinc instead of this 1e-5 silliness
-    state->pulse_shape[i] = double_to_sample(M_PI/(1+M_PI)/2 * // divide by 2 to prevent overflow on 111111 sequence
+    // 0.9 is a fudge factor, should actually be the 1/the sum of 2*overlap samples at the sample point
+    state->pulse_shape[i] = double_to_sample(M_PI/(1+M_PI) * 0.9 *
 
             ( cos( (1+beta) * M_PI * k/M) +   sin((1-beta) * M_PI * k/M)
 //          (                                ----------------------------  )

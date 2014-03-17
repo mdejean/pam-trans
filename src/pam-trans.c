@@ -39,7 +39,7 @@ uint32_t output_sample_rate = 1000000; //Hz = 1MHz
 
 //set up buffers in three memory regions so DMA can take them
 // without stalling the processor
-//this has a side effect of making us unable to use
+//this has a side effect of making us unable to use most of mem_a
 #define USE_SECTION(a) __attribute__ ((section ((a))))
 uint8_t region_one[OUTPUT_BUFFER_LENGTH] USE_SECTION("MEM_A");
 uint8_t region_two[OUTPUT_BUFFER_LENGTH] USE_SECTION("MEM_B");
@@ -52,7 +52,7 @@ bool stalled = false;
 uint8_t* being_transmitted = region_two;
 
 
-void do_dma(uint8_t* buffer, size_t length) {
+void set_dma_buffer(uint8_t* buffer, size_t length) {
   DMA_Cmd(DMA_STREAM, DISABLE); //stop DMA so that we can adjust it
 
   //probably unnecessary wait
@@ -106,19 +106,25 @@ void gpio_dma_init() {
   GPIO_Init(GPIOE, &GPIO_InitStructure);
 
 
-  /* Set up TIM1 to generate a DMA request on overflow */
+  /* Set up TIM1 to generate a DMA request on overflow
+   * set up TIM2 to count TIM1 overflows) */
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM1, ENABLE);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
 
-  update_output_sample_rate();
-  //set TIM1 MMS=010 (TRGO each update event)
-  TIM_ITConfig(TIM1, TIM_IT_Update, ENABLE);
+  update_output_sample_rate(); //sets up TIM1 counting
+
+  //set TIM1 to generate Update events
+  TIM_SelectOutputTrigger(TIM1, TIM_TRGOSource_Update);
+  //send a DMA command on each of those events
+  TIM_DMACmd(TIM1, TIM_DMA_Update, ENABLE);
 
 
   /* Set up TIM2 to count TIM1 overflows */
-  //set TIM2 TS=000 (connect)
 
-  //set TIM2 SMS=111 (slave timer)
-
+  //set TIM2 TS=000 (use TRGO)
+  TIM_SelectInputTrigger(TIM2, TIM_TS_ITR0);
+  //set TIM2 SMS=111 (count trigger events)
+  TIM_SelectSlaveMode(TIM2, TIM_SlaveMode_External1);
   //set up DMA2 to access SRAM1/2
 
   /* Enable DMA clock */
@@ -147,9 +153,6 @@ void gpio_dma_init() {
   DMA_InitStructure.DMA_FIFOThreshold = DMA_FIFOThreshold_Full;
   DMA_InitStructure.DMA_MemoryBurst = DMA_MemoryBurst_Single;
   DMA_InitStructure.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
-  /* Enable DMA Stream Transfer Complete interrupt */
-  DMA_ITConfig(DMA_STREAM, DMA_IT_TCIF0, ENABLE);
-
 }
 
 void TIM2_IRQHandler(void) {

@@ -22,12 +22,6 @@ SAMPLE_INLINE sample_t float_to_sample(float a) {
   return (sample_t)( a * SAMPLE_MAX );
 }
 
-SAMPLE_INLINE sample_t double_to_sample(double a) {
-  if (a >= 1) a = 1;
-  if (a <= -1) a = -1;
-  return (sample_t)( a * SAMPLE_MAX );
-}
-
 SAMPLE_INLINE uint8_t sample_to_uint8(sample_t a) {
   return (uint8_t)(128 + (a / (SAMPLE_MAX/256)));
 }

@@ -117,7 +117,14 @@ void update_output_sample_rate() {
   TIM_Cmd(TIM6, ENABLE);
 }
 
+GPIO_InitTypeDef gpioa_config;
 void output_init() {
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+  gpioa_config.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5;
+  gpioa_config.GPIO_Mode = GPIO_Mode_AN;
+  gpioa_config.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_Init(GPIOA, &gpioa_config);
+  
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_DAC, ENABLE);
 

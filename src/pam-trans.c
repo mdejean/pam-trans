@@ -12,8 +12,6 @@
 #include "encode.h"
 #include "sample.h"
 
-int __errno = 0; //fixme required by libm
-
 #define OUTPUT_BUFFER_LENGTH 2048 //2KB
 
 #define SRRC_OVERLAP 4

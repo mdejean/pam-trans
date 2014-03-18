@@ -1,6 +1,6 @@
-#include "badmath.h"
 #include "upconvert.h"
 
+#include "bad-math.h"
 
 //no malloc
 sample_t carrier_storage[UPCONVERT_MAX_N];

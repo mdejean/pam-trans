@@ -1,12 +1,8 @@
 #include <string.h> //memset memcpy
 #include <stdbool.h>
-#include <math.h>
 #include <string.h>
 
-#ifndef M_PI
-#define M_PI (4.0*atan(1))
-#endif
-
+#include "bad-math.h"
 #include "sample.h"
 #include "convolve.h"
 
@@ -25,7 +21,7 @@ bool convolve_init_srrc(
   state->overlap = overlap;
   state->M = M;
   state->pulse_shape_len = 2 * overlap * M;
-  state->amplitude_corr = (1+M_PI)/M_PI * 4.0f *beta/fsqrt((float)M) / 0.9f;
+  state->amplitude_corr = (1+M_PI)/M_PI * 4.0f *beta/f_sqrt((float)M) / 0.9f;
   //singleton :(
   state->edge_symbols = edge_symbols_storage;
   memset(state->edge_symbols, 0, overlap * sizeof(sample_t));
@@ -37,7 +33,7 @@ bool convolve_init_srrc(
     // 0.9 is a fudge factor, should actually be the 1/the sum of 2*overlap samples at the sample point
     state->pulse_shape[i] = float_to_sample(M_PI/(1+M_PI) * 0.9f *
 
-            ( cos( (1+beta) * M_PI * k/M) +   sin((1-beta) * M_PI * k/M)
+            ( f_cos( (1+beta) * M_PI * k/M) +   f_sin((1-beta) * M_PI * k/M)
 //          (                                ----------------------------  )
                                                  /(4*beta*k/M) )
 //          -------------------------------------------------------------

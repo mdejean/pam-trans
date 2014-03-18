@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "stm32f4xx.h"
 #include "stm32f4xx_gpio.h"
 #include "stm32f4xx_dma.h"
@@ -10,6 +12,7 @@
 #include "encode.h"
 #include "sample.h"
 
+int __errno = 0; //fixme required by libm
 
 #define OUTPUT_BUFFER_LENGTH 2048 //2KB
 
@@ -28,16 +31,17 @@ char message[MAX_MESSAGE_LENGTH] =
 #define MIN_FRAME_LENGTH 40
 #define MAX_HEADER_LENGTH 100
 
-#define MAX_DATA_LENGTH MAX_MESSAGE_LENGTH + MAX_MESSAGE_LENGTH/MIN_FRAME_LENGTH * MAX_HEADER_LENGTH
-uint8_t data[MAX_DATA_LENGTH];
+#define MAX_DATA_LENGTH 2000
+uint8_t data[MAX_DATA_LENGTH]; //2K
 
 char header[MAX_HEADER_LENGTH] = "IntroDigitalCommunications:eecs354:mxb11:profbuchner";
 
 #define MAX_SYMBOLS_LENGTH (MAX_DATA_LENGTH * 8/BITS_PER_SYMBOL)
-//overlap extra samples at the end get filled with the beginning for repeat transmission
-sample_t symbols[MAX_SYMBOLS_LENGTH + SRRC_OVERLAP];
 
-sample_t envelope[OUTPUT_BUFFER_LENGTH];
+//overlap extra samples at the end get filled with the beginning for repeat transmission
+sample_t symbols[MAX_SYMBOLS_LENGTH + SRRC_OVERLAP]; //(2K * 4) * 4 = 32K
+
+sample_t envelope[OUTPUT_BUFFER_LENGTH]; //16K
 size_t envelope_samples_used;
 
 uint32_t output_sample_rate = 1000000; //Hz = 1MHz
@@ -192,15 +196,21 @@ int main(void) {
                       message_length,
                       data,
                       MAX_DATA_LENGTH);
-
+      //TODO: transmit partial message if message is too large to be framed (change in frame_message)
+      if (!data_used) {
+        //set_fault_light();
+      }
       symbols_length = encode_data(&encoder, data, data_used, symbols, MAX_SYMBOLS_LENGTH);
       memcpy(&symbols[symbols_length], &symbols[0], SRRC_OVERLAP * sizeof(sample_t));
       symbols_length += SRRC_OVERLAP;
       symbols_position = 0;
 
       symbols_per_buffer = OUTPUT_BUFFER_LENGTH/convolver.M;
+      
+      new_message = false;
     }
     if (envelope_samples_used == 0) {
+      memset(envelope, 0, sizeof(envelope));
       symbols_position +=
         convolve(&convolver,
                  &symbols[symbols_position],

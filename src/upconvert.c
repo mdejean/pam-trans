@@ -1,8 +1,4 @@
-#include <math.h>
-#ifndef M_PI
-#define M_PI (4.0*atan(1))
-#endif
-
+#include "badmath.h"
 #include "upconvert.h"
 
 
@@ -18,7 +14,7 @@ bool upconvert_init(upconvert_state* s, size_t M, size_t N) {
   s->phase = 0;
   s->carrier = carrier_storage;
   for (size_t i = 0; i < N; i++) {
-    s->carrier[i] = double_to_sample(cos((i*2.0*M_PI) / N));
+    s->carrier[i] = float_to_sample(f_cos((i*2.0f*M_PI) / N));
   }
   return true;
 }

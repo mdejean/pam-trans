@@ -210,7 +210,7 @@ int main(void) {
       new_message = false;
     }
     if (envelope_samples_used == 0) {
-      memset(envelope, 0, sizeof(envelope));
+      memset(envelope, 0, OUTPUT_BUFFER_LENGTH * sizeof(envelope[0]));
       symbols_position +=
         convolve(&convolver,
                  &symbols[symbols_position],
@@ -240,23 +240,21 @@ int main(void) {
 
 /*The default interrupt handler crashes the system (for unexpected interrupts)
  * For some interrupts we don't want this behavior */
-void NMI_Handler(void)
-{
+void NMI_Handler(void) {
 }
 
-void SVC_Handler(void)
-{
+void SVC_Handler(void) {
 }
 
-void DebugMon_Handler(void)
-{
+void DebugMon_Handler(void) {
 }
 
-void PendSV_Handler(void)
-{
+void PendSV_Handler(void) {
 }
 
-void SysTick_Handler(void)
-{
+void SysTick_Handler(void) {
+}
+
+void WWDG_IRQHandler(void) {
 }
 

@@ -1,7 +1,8 @@
 FIRMWARE_PACKAGE="./STM32F4-Discovery_FW_V1.1.0"
 
-arm-none-eabi-gcc -std=c99 -lm -Wall -Wno-strict-aliasing -fomit-frame-pointer \
--mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mthumb -Os -fdata-sections -ffunction-sections  \
+arm-none-eabi-gcc -std=c99 -static -nostdlib -Wall -Wno-strict-aliasing -fomit-frame-pointer \
+-mfloat-abi=hard -fsingle-precision-constant -Wdouble-promotion -mfpu=fpv4-sp-d16 \
+-mcpu=cortex-m4 -mthumb  \
 -Iinc \
 -I$FIRMWARE_PACKAGE/Libraries/CMSIS/Include \
 -I$FIRMWARE_PACKAGE/Libraries/CMSIS/ST/STM32F4xx/Include \
@@ -14,5 +15,5 @@ arm-none-eabi-gcc -std=c99 -lm -Wall -Wno-strict-aliasing -fomit-frame-pointer \
 $FIRMWARE_PACKAGE/Libraries/STM32F4xx_StdPeriph_Driver/src/*.c \
 $FIRMWARE_PACKAGE/Libraries/CMSIS/ST/STM32F4xx/Source/Templates/gcc_ride7/startup_stm32f4xx.s \
 $FIRMWARE_PACKAGE/Libraries/CMSIS/ST/STM32F4xx/Source/Templates/system_stm32f4xx.c \
-src/*.c -Tbuild/linker.ld -nostartfiles -o bin/pam-trans.elf -Wl,--gc-sections -g
+src/*.c -Tbuild/linker.ld -o bin/pam-trans.elf -g #-fdata-sections -ffunction-sections -Wl,--gc-sections
 

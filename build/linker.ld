@@ -20,11 +20,6 @@ MEMORY
 /* define stack size and heap size here */
 stack_size = 3072;
 heap_size = 0;
- 
-/* define beginning and ending of stack */
-_stack_start = ORIGIN(RAM)+LENGTH(RAM);
-_stack_end = _stack_start - stack_size;
-_estack = 0x10020000;
 
 /* Define output sections */
 SECTIONS
@@ -96,6 +91,22 @@ SECTIONS
         . = . + heap_size;
         _heap_end = .;
     } > RAM
+    . = ALIGN(4);
+    
+    .stack : {
+        _stack_start = .;
+        . = . + stack_size;
+        _stack_end = .;
+        _estack = .; /*isr_vector references _estack */
+    }
+    
+    SRAM1 : {
+        . = ALIGN(4);
+    } > SRAM1
+
+    SRAM2 : {
+        . = ALIGN(4);
+    } > SRAM2
 
  
     /* Remove information from the standard libraries */

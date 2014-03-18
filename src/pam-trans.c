@@ -2,6 +2,8 @@
 #include "stm32f4xx_gpio.h"
 #include "stm32f4xx_dma.h"
 #include "stm32f4xx_tim.h"
+#include "stm32f4xx_rcc.h"
+#include "stm32f4xx_dac.h"
 
 #include "upconvert.h"
 #include "convolve.h"
@@ -58,19 +60,21 @@ bool stalled = true;
 uint8_t* being_transmitted = region_two;
 
 
-DMA_InitTypeDef  dma_config;
+DMA_InitTypeDef dma_config;
+DAC_InitTypeDef dac_config;
+
 void set_dma_buffer(uint8_t* buffer, size_t length) {
-  DMA_Cmd(DMA_STREAM, DISABLE); //stop DMA so that we can adjust it
+  DMA_Cmd(DMA1_Stream5, DISABLE); //stop DMA so that we can adjust it
 
   //probably unnecessary wait
-  while (DMA_GetCmdStatus(GPIO_DMA_STREAM) != DISABLE);
+  while (DMA_GetCmdStatus(DMA1_Stream5) != DISABLE);
   
   //the remainder of this structure is set up in output_init()
   dma_config.DMA_Memory0BaseAddr = (uint32_t)buffer;
   dma_config.DMA_BufferSize = length;
-  DMA_Init(GPIO_DMA_STREAM, &dma_config);
+  DMA_Init(DMA1_Stream5, &dma_config);
   /* DMA Stream enable */
-  DMA_Cmd(DMA_STREAM, ENABLE);
+  DMA_Cmd(DMA1_Stream5, ENABLE);
 
   /* Enable DAC Channel2 */
   DAC_Cmd(DAC_Channel_2, ENABLE);
@@ -132,12 +136,12 @@ void output_init() {
   DMA_DeInit(DMA1_Stream5);
 
   /* wait for DMA stream*/
-  while (DMA_GetCmdStatus(GPIO_DMA_STREAM) != DISABLE)
+  while (DMA_GetCmdStatus(DMA1_Stream5) != DISABLE)
   {
   }
 
   dma_config.DMA_Channel = DMA_Channel_7;
-  dma_config.DMA_PeripheralBaseAddr = (uint32_t)DAC_DHR8R2_ADDRESS; //8 bit samples TODO: switch to 12-bit
+  dma_config.DMA_PeripheralBaseAddr = (uint32_t)&(DAC->DHR8R2); //8 bit samples TODO: switch to 12-bit
   //dma_config.DMA_Memory0BaseAddr = (uint32_t)being_transmitted; //GPIOE 8-15: 2nd byte
   dma_config.DMA_DIR = DMA_DIR_MemoryToPeripheral;
   //dma_config.DMA_BufferSize = 0; filled by set_dma_buffer
@@ -223,6 +227,9 @@ int main(void) {
   }
 }
 
+
+/*The default interrupt handler crashes the system (for unexpected interrupts)
+ * For some interrupts we don't want this behavior */
 void NMI_Handler(void)
 {
 }
@@ -231,29 +238,14 @@ void SVC_Handler(void)
 {
 }
 
-/**
-  * @brief  This function handles Debug Monitor exception.
-  * @param  None
-  * @retval None
-  */
 void DebugMon_Handler(void)
 {
 }
 
-/**
-  * @brief  This function handles PendSVC exception.
-  * @param  None
-  * @retval None
-  */
 void PendSV_Handler(void)
 {
 }
 
-/**
-  * @brief  This function handles SysTick Handler.
-  * @param  None
-  * @retval None
-  */
 void SysTick_Handler(void)
 {
 }

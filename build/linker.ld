@@ -10,11 +10,11 @@ ENTRY(Reset_Handler)
 /* Specify the memory areas */
 MEMORY
 {
-  FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 0x100000 /*1024K*/
-  RAM (xrw)       : ORIGIN = 0x10000000, LENGTH = 0x010000 /*64K CCM (core memory)*/
-  SRAM1 (xrw)     : ORIGIN = 0x20000000, LENGTH = 0x01C000 /*112K SRAM */
-  SRAM2 (xrw)     : ORIGIN = 0x2001C000, LENGTH = 0x004000 /*16K SRAM */
-  BKP_SRAM (rw)   : ORIGIN = 0x40024000, LENGTH = 0x001000 /*battery backup ram*/
+  FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 0x100000 /*1024K*/
+  RAM (xrw)       : ORIGIN = 0x10000000, LENGTH = 0x010000 /*64K CCM (core memory)*/
+  SRAM1 (xrw)     : ORIGIN = 0x20000000, LENGTH = 0x01C000 /*112K SRAM */
+  SRAM2 (xrw)     : ORIGIN = 0x2001C000, LENGTH = 0x004000 /*16K SRAM */
+  BKP_SRAM (rw)   : ORIGIN = 0x40024000, LENGTH = 0x001000 /*battery backup ram*/
 }
  
 /* define stack size and heap size here */

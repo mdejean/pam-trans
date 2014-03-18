@@ -42,10 +42,10 @@ uint32_t output_sample_rate = 1000000; //Hz = 1MHz
 
 //set up buffers in three memory regions so DMA can take them
 // without stalling the processor
-//this has a side effect of making us unable to use most of mem_a
+//this has a side effect of making us unable to use most of SRAM1
 #define USE_SECTION(a) __attribute__ ((section ((a))))
-uint8_t region_one[OUTPUT_BUFFER_LENGTH] USE_SECTION("MEM_A");
-uint8_t region_two[OUTPUT_BUFFER_LENGTH] USE_SECTION("MEM_B");
+uint8_t region_one[OUTPUT_BUFFER_LENGTH] USE_SECTION("SRAM1");
+uint8_t region_two[OUTPUT_BUFFER_LENGTH] USE_SECTION("SRAM2");
 //pointers to the three buffers by current use
 uint8_t* being_filled = region_one;
 //how much of the buffer to transmit

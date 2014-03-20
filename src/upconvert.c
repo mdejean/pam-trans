@@ -1,6 +1,6 @@
-#include "upconvert.h"
+#include <math.h>
 
-#include "bad-math.h"
+#include "upconvert.h"
 
 //no malloc
 sample_t carrier_storage[UPCONVERT_MAX_N];
@@ -14,7 +14,7 @@ bool upconvert_init(upconvert_state* s, size_t M, size_t N) {
   s->phase = 0;
   s->carrier = carrier_storage;
   for (size_t i = 0; i < N; i++) {
-    s->carrier[i] = float_to_sample(f_cos((i*2.0f*M_PI) / N));
+    s->carrier[i] = float_to_sample(cosf((i*2.0f*M_PI) / N));
   }
   return true;
 }

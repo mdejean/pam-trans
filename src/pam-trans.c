@@ -42,7 +42,7 @@ sample_t symbols[MAX_SYMBOLS_LENGTH + SRRC_OVERLAP]; //(2K * 4) * 4 = 32K
 sample_t envelope[OUTPUT_BUFFER_LENGTH]; //16K
 size_t envelope_samples_used;
 
-uint32_t output_sample_rate = 1000000; //Hz = 1MHz
+uint32_t output_sample_rate = 200000; //Hz
 
 //set up buffers in three memory regions so DMA can take them
 // without stalling the processor
@@ -57,7 +57,7 @@ size_t fill_length;
 
 /*at startup we wait for the buffer to be filled before first transmitting 
  *  this is the same as being stalled */
-bool stalled = true;
+volatile bool stalled = true;
 
 uint8_t* being_transmitted = region_two;
 
@@ -66,17 +66,21 @@ DMA_InitTypeDef dma_config;
 DAC_InitTypeDef dac_config;
 
 void set_dma_buffer(uint8_t* buffer, size_t length) {
-  DMA_Cmd(DMA1_Stream5, DISABLE); //stop DMA so that we can adjust it
+  DMA_Cmd(DMA1_Stream6, DISABLE); //stop DMA so that we can adjust it
 
   //probably unnecessary wait
-  while (DMA_GetCmdStatus(DMA1_Stream5) != DISABLE);
+  while (DMA_GetCmdStatus(DMA1_Stream6) != DISABLE);
   
   //the remainder of this structure is set up in output_init()
   dma_config.DMA_Memory0BaseAddr = (uint32_t)buffer;
   dma_config.DMA_BufferSize = length;
-  DMA_Init(DMA1_Stream5, &dma_config);
+  DMA_Init(DMA1_Stream6, &dma_config);
+  
+  
   /* DMA Stream enable */
-  DMA_Cmd(DMA1_Stream5, ENABLE);
+  DMA_Cmd(DMA1_Stream6, ENABLE);
+  
+  DAC_ClearFlag(DAC_Channel_2, DAC_FLAG_DMAUDR);
 
   /* Enable DAC Channel2 */
   DAC_Cmd(DAC_Channel_2, ENABLE);
@@ -105,7 +109,7 @@ void swap_buffers() {
 void update_output_sample_rate() {
   static TIM_TimeBaseInitTypeDef timebase;
   /* Time base configuration */
-  timebase.TIM_Period = (SystemCoreClock / 2) / output_sample_rate; //e.g. 168 for 1MHz
+  timebase.TIM_Period = (SystemCoreClock / 8) / output_sample_rate; //e.g. 168 for 1MHz
   timebase.TIM_Prescaler = 0;
   timebase.TIM_ClockDivision = 0;
   timebase.TIM_CounterMode = TIM_CounterMode_Up;
@@ -119,14 +123,17 @@ void update_output_sample_rate() {
 
 GPIO_InitTypeDef gpioa_config;
 void output_init() {
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_DAC, ENABLE);
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+  
+  
   gpioa_config.GPIO_Pin = GPIO_Pin_4 | GPIO_Pin_5;
   gpioa_config.GPIO_Mode = GPIO_Mode_AN;
   gpioa_config.GPIO_PuPd = GPIO_PuPd_NOPULL;
   GPIO_Init(GPIOA, &gpioa_config);
   
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_DAC, ENABLE);
 
   update_output_sample_rate(); //sets up TIM6 counting
 
@@ -138,20 +145,18 @@ void output_init() {
   
   //don't start DAC until we have actual data in the buffers
   
-  /* Enable DMA clock */
-  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_DMA1, ENABLE);
 
   /* Reset DMA Stream registers */
-  DMA_DeInit(DMA1_Stream5);
+  DMA_DeInit(DMA1_Stream6);
 
   /* wait for DMA stream*/
-  while (DMA_GetCmdStatus(DMA1_Stream5) != DISABLE)
+  while (DMA_GetCmdStatus(DMA1_Stream6) != DISABLE)
   {
   }
 
   dma_config.DMA_Channel = DMA_Channel_7;
   dma_config.DMA_PeripheralBaseAddr = (uint32_t)&(DAC->DHR8R2); //8 bit samples TODO: switch to 12-bit
-  //dma_config.DMA_Memory0BaseAddr = (uint32_t)being_transmitted; //GPIOE 8-15: 2nd byte
+  //dma_config.DMA_Memory0BaseAddr = (uint32_t)being_transmitted;
   dma_config.DMA_DIR = DMA_DIR_MemoryToPeripheral;
   //dma_config.DMA_BufferSize = 0; filled by set_dma_buffer
   dma_config.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
@@ -164,14 +169,24 @@ void output_init() {
   dma_config.DMA_FIFOThreshold = DMA_FIFOThreshold_Full;
   dma_config.DMA_MemoryBurst = DMA_MemoryBurst_Single;
   dma_config.DMA_PeripheralBurst = DMA_PeripheralBurst_Single;
-  //DMA_Init(DMA1_Stream5, &dma_config); don't init until struct is fully filled out
+  //DMA_Init(DMA1_Stream6, &dma_config); don't init until struct is fully filled out
   
-  //DMA_Cmd(DMA1_Stream5, ENABLE);
+  //enable transfer complete interrupt
+  DMA_ClearITPendingBit(DMA1_Stream6, DMA_IT_TCIF6);  
+  DMA_ITConfig(DMA1_Stream6, DMA_IT_TC, ENABLE);
+  
+  //DMA_Cmd(DMA1_Stream6, ENABLE);
 }
 
-void DMA1_Stream5_IRQHandler(void) {
-    swap_buffers();
+void DMA1_Stream6_IRQHandler(void) {
+  DMA_ClearITPendingBit(DMA1_Stream6, DMA_IT_TCIF6);  
+  swap_buffers();
 }
+
+const TIM_TypeDef* TIM6_ForDebug = TIM6;
+const DMA_TypeDef* DMA1_ForDebug = DMA1;
+const DMA_Stream_TypeDef* DMA1_Stream6_ForDebug = DMA1_Stream6;
+const DAC_TypeDef* DAC_ForDebug = DAC;
 
 int main(void) {
   encode_state encoder;
@@ -191,6 +206,8 @@ int main(void) {
   upconvert_init(&upconverter, 1, 10); //carrier = 100kHz if Fs = 1MHz
 
   output_init();
+  
+  stalled = true;
 
   for (;;) {
     if (new_message == true) {
@@ -216,16 +233,18 @@ int main(void) {
     }
     if (envelope_samples_used == 0) {
       memset(envelope, 0, OUTPUT_BUFFER_LENGTH * sizeof(envelope[0]));
-      symbols_position +=
+      size_t symbols_consumed =
         convolve(&convolver,
                  &symbols[symbols_position],
                  (symbols_length - symbols_position < symbols_per_buffer)
                     ? symbols_length - symbols_position : symbols_per_buffer,
                  envelope,
                  OUTPUT_BUFFER_LENGTH);
+      symbols_position += symbols_consumed;
       if (symbols_length - symbols_position <= SRRC_OVERLAP) {
         symbols_position = 0;
       }
+      envelope_samples_used = convolver.M * symbols_consumed;
     }
     if (fill_length == 0) {
       //dma is doing its thing, do the next block
@@ -238,6 +257,10 @@ int main(void) {
         swap_buffers();
       }
       envelope_samples_used = 0;
+    }
+    
+    if(DMA_GetITStatus(DMA1_Stream6, DMA_IT_TCIF6)) {
+      DMA1_Stream6_IRQHandler(); //shits not working yo
     }
   }
 }

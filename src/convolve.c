@@ -47,10 +47,10 @@ bool convolve_init_srrc(
 //Make the envelope from the symbols (upsampling and then convolution w/ pulse shape)
 
 size_t convolve(
-    convolve_state* state,
-    const sample_t* symbols,
+    convolve_state* restrict state,
+    const sample_t* restrict symbols,
     size_t num_symbols,
-    sample_t* envelope,
+    sample_t* restrict envelope,
     size_t envelope_s) {//TODO: envelope_s should be used, or at least asserted!
   //first deal with the symbols from the previous block
   for (int i = 0; i < state->overlap; i++) {

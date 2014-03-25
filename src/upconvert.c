@@ -20,9 +20,9 @@ bool upconvert_init(upconvert_state* s, size_t M, size_t N) {
 }
 
 size_t upconvert(upconvert_state* s,
-    const sample_t* envelope,
+    const sample_t* restrict envelope,
     size_t envelope_len,
-    uint8_t* signal,
+    uint8_t* restrict signal,
     size_t signal_s) {
   if (signal_s < s->M * envelope_len) {
     return 0;

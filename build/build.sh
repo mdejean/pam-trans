@@ -1,8 +1,8 @@
 FIRMWARE_PACKAGE="./STM32F4-Discovery_FW_V1.1.0"
 
-arm-none-eabi-gcc -O3 -std=gnu99 -static -nostdlib -Wall -Wno-strict-aliasing -fomit-frame-pointer \
+arm-none-eabi-gcc -O3 -std=c99 -static -nostdlib -Wall -Wno-strict-aliasing -fomit-frame-pointer \
 -mfloat-abi=hard -fsingle-precision-constant -Wdouble-promotion -mfpu=fpv4-sp-d16 \
--ffast-math -mcpu=cortex-m4 -mthumb  \
+-ffast-math -fwhole-program -fstrict-aliasing -mcpu=cortex-m4 -mthumb  \
 -Iinc \
 -I$FIRMWARE_PACKAGE/Libraries/CMSIS/Include \
 -I$FIRMWARE_PACKAGE/Libraries/CMSIS/ST/STM32F4xx/Include \

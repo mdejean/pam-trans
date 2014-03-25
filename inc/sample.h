@@ -7,6 +7,10 @@
 #define SAMPLE_MAX INT32_MAX
 #define SAMPLE_MIN INT32_MIN
 
+#ifndef M_PI
+#define M_PI 3.1415926f
+#endif //FIXME: this doesn't really belong in this file
+
 typedef int32_t sample_t; //32 bit signed fixed point i.e. divided by 2^31
 
 #ifndef SAMPLE_INLINE

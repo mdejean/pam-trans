@@ -94,9 +94,8 @@ void output_init(output_state* o) {
     gpioa_config.GPIO_Mode = GPIO_Mode_AN;
     gpioa_config.GPIO_PuPd = GPIO_PuPd_NOPULL;
     GPIO_Init(GPIOA, &gpioa_config);
-    
 
-    update_output_sample_rate(o->output_sample_rate); //sets up TIM6 counting
+    update_output_sample_rate(o->sample_rate); //sets up TIM6 counting
 
     /* DAC channel2 Configuration */
     dac_config.DAC_Trigger = DAC_Trigger_T6_TRGO;
@@ -142,7 +141,7 @@ void output_init(output_state* o) {
   front_buffer = o->region_one;
   back_buffer = o->region_two;
   back_fill_length = 0;
-  update_output_sample_rate(o->output_sample_rate);
+  update_output_sample_rate(o->sample_rate);
 }
 
 

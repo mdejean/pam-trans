@@ -26,7 +26,7 @@ typedef struct ui_entry {
   void* user_data;
 } ui_entry;
 
-bool ui_init(ui_entry* entries, size_t count);
+bool ui_init(const ui_entry* entries, size_t count);
 
 void ui_tick();
 

@@ -30,7 +30,7 @@ void update_output_sample_rate(uint32_t output_sample_rate) {
   timebase.TIM_CounterMode = TIM_CounterMode_Up;
 
   TIM_TimeBaseInit(TIM6, &timebase);
-  //set TIM1 to generate Update events
+  //set TIM6 to generate Update events
   TIM_SelectOutputTrigger(TIM6, TIM_TRGOSource_Update);
   /* TIM6 enable counter */
   TIM_Cmd(TIM6, ENABLE);

@@ -123,7 +123,7 @@ int main(void) {
     }
     
     //3. Upconvert the envelope
-    //Note that there will always be an envelope waiting for us at this point
+    //Note that there will always be an envelope waiting for us at this point because we clear envelope_samples_used and the previous block runs first
     if (output_get_buffer()) {
       //dma is doing its thing, do the next block
       fill_length = upconvert(&upconverter,

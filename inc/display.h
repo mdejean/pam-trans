@@ -8,7 +8,6 @@
 
 void display_init();
 
-
 //returns true if the display is ready for a character
 bool display_ready();
 

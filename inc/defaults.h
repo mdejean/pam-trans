@@ -1,0 +1,6 @@
+#ifndef DEFAULTS_H
+#define DEFAULTS_H
+
+#define DEFAULT_SAMPLE_RATE 250000
+
+#endif

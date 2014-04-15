@@ -34,6 +34,7 @@ void TIM2_IRQHandler() {
       if (character_to_write == 0) {
         //we're done
         TIM_SetAutoreload(TIM2, 0);
+      }
       break;
   }
 }
@@ -63,12 +64,12 @@ void display_init() {
   gpiob_config.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_Init(GPIOB, &gpiob_config);
   
-  static TIM_TimeBaseInitTypeDef tim1;
+  static TIM_TimeBaseInitTypeDef tim2;
   /* Time base configuration */
-  tim1.TIM_Period = DISPLAY_PERIOD; // slow idk
-  tim1.TIM_Prescaler = 0;
-  tim1.TIM_ClockDivision = 0;
-  tim1.TIM_CounterMode = TIM_CounterMode_Up;
+  tim2.TIM_Period = DISPLAY_PERIOD; // slow idk
+  tim2.TIM_Prescaler = 0;
+  tim2.TIM_ClockDivision = 0;
+  tim2.TIM_CounterMode = TIM_CounterMode_Up;
 
   TIM_TimeBaseInit(TIM2, &timebase);
   //set TIM6 to generate Update events
@@ -77,7 +78,10 @@ void display_init() {
   TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
   /* TIM6 enable counter */
   TIM_Cmd(TIM2, ENABLE);
+  //set 8-bit, two line mode
   GPIO_SetBits(GPIOE, 0x3C);
+  //this may result in an extra cycle wait. Good.
+  state = 0;
 }
 
 bool display_ready() {

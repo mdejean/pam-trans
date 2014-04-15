@@ -66,10 +66,10 @@ void swap_buffers() {
     stalled = true;
     return;
   } else {
-    const uint8_t* temp = back_buffer;
+    set_dma_buffer(back_buffer, back_fill_length);
+    uint8_t* temp = back_buffer;
     back_buffer = front_buffer;
     front_buffer = temp;
-    set_dma_buffer(being_transmitted, fill_length);
     back_fill_length = 0;
     stalled = false;
   }
@@ -80,8 +80,8 @@ void DMA1_Stream6_IRQHandler(void) {
   swap_buffers();
 }
 
-void output_init(output_state* o) {
-  static peripherals_initialized = false;
+bool output_init(output_state* o) {
+  static bool peripherals_initialized = false;
   if (!peripherals_initialized) {
     //turn on the peripheral clocks
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);
@@ -142,6 +142,8 @@ void output_init(output_state* o) {
   back_buffer = o->region_two;
   back_fill_length = 0;
   update_output_sample_rate(o->sample_rate);
+  
+  return true;
 }
 
 
@@ -168,6 +170,7 @@ bool output_set_filled(output_state* o, size_t fill_length) {
   if (stalled) {
     swap_buffers();
   }
+  return true;
 }
 
 bool output_stalled() {

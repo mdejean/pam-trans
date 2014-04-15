@@ -12,6 +12,7 @@
 #include "encode.h"
 #include "sample.h"
 
+#include "output.h"
 #include "ui.h"
 
 #include "defaults.h"
@@ -87,9 +88,7 @@ int main(void) {
   
   ui_init(ui, sizeof(ui)/sizeof(ui[0]));
   
-  output_init();
-  
-  stalled = true;
+  output_init(&output);
 
   for (;;) {
     
@@ -137,12 +136,12 @@ int main(void) {
     
     //3. Upconvert the envelope
     //Note that there will always be an envelope waiting for us at this point because we clear envelope_samples_used and the previous block runs first
-    if (output_get_buffer()) {
+    if (output_get_buffer(&output)) {
       //dma is doing its thing, do the next block
-      fill_length = upconvert(&upconverter,
+      size_t fill_length = upconvert(&upconverter,
                               envelope,
                               envelope_samples_used,
-                              output_get_buffer(),
+                              output_get_buffer(&output),
                               OUTPUT_BUFFER_LENGTH);
       output_set_filled(&output, fill_length);
       

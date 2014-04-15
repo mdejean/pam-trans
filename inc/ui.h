@@ -1,6 +1,9 @@
 #ifndef UI_H
 #define UI_H
 
+#include <stddef.h>
+#include <stdint.h>
+
 #define UI_MAX_NAME_LENGTH 20
 #define UI_MAX_VALUE_LENGTH 20
 
@@ -19,16 +22,19 @@ typedef enum ui_button {
   UI_BUTTON_CANCEL = 0x20
 } ui_button;
 
+//forward declaration because callback is in and takes struct
+typedef struct ui_entry ui_entry;
+
 //return true to consume the button press
 typedef bool (*ui_callback)(const ui_entry* entry, ui_button button);
 
-typedef struct ui_entry {
+struct ui_entry {
   ui_entry_type type;
   const char* name;
   void* value;
   ui_callback callback;
   void* user_data;
-} ui_entry;
+};
 
 bool ui_init(const ui_entry* entries, size_t count);
 
@@ -36,6 +42,6 @@ bool ui_init(const ui_entry* entries, size_t count);
 void ui_tick();
 
 //a callback that does nothing
-void ui_callback_none(const ui_entry* entry, ui_button button);
+bool ui_callback_none(const ui_entry* entry, ui_button button);
 
 #endif

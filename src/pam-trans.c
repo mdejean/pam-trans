@@ -12,6 +12,8 @@
 #include "encode.h"
 #include "sample.h"
 
+#include "ui.h"
+
 #include "defaults.h"
 
 #define OUTPUT_BUFFER_LENGTH 2048 //2KB
@@ -51,16 +53,25 @@ size_t envelope_samples_used;
 uint8_t region_one[OUTPUT_BUFFER_LENGTH] USE_SECTION("SRAM1");
 uint8_t region_two[OUTPUT_BUFFER_LENGTH] USE_SECTION("SRAM2");
 
+
+encode_state encoder;
+convolve_state convolver;
+upconvert_state upconverter;
+output_state output = {
+  .sample_rate = DEFAULT_SAMPLE_RATE,
+  .region_one = region_one,
+  .region_two = region_two,
+  .output_buffer_length = OUTPUT_BUFFER_LENGTH
+};
+
+const ui_entry ui[] = {
+  {.type = UI_ENTRY_STRING, .name = "Message:", .value = &message[0], .callback = ui_callback_none},
+  {.type = UI_ENTRY_STRING, .name = "Framing:", .value = &header[0], .callback = ui_callback_none},
+  {.type = UI_ENTRY_UINT32, .name = "Output sample rate:", .value = &output.sample_rate, .callback = ui_callback_none},
+};
+
+
 int main(void) {
-  encode_state encoder;
-  convolve_state convolver;
-  upconvert_state upconverter;
-  output_state output = {
-    .output_sample_rate = DEFAULT_SAMPLE_RATE,
-    .region_one = region_one,
-    .region_two = region_two,
-    .output_buffer_length = OUTPUT_BUFFER_LENGTH
-  };
 
   size_t message_length = 0;
   size_t symbols_length = 0;
@@ -73,7 +84,9 @@ int main(void) {
   encode_init(&encoder, 100, (const uint8_t*)header, strlen(header), NULL, 0);
   convolve_init_srrc(&convolver, 0.2, 4, 100); //baudrate = 10kHz
   upconvert_init(&upconverter, 1, 10); //carrier = 100kHz if Fs = 1MHz
-
+  
+  ui_init(ui, sizeof(ui)/sizeof(ui[0]));
+  
   output_init();
   
   stalled = true;
@@ -135,6 +148,9 @@ int main(void) {
       
       envelope_samples_used = 0;
     }
+    
+    //4. Update the UI
+    ui_tick();
     
     //if(DMA_GetITStatus(DMA1_Stream6, DMA_IT_TCIF6)) {
     //  DMA1_Stream6_IRQHandler(); //shits not working yo

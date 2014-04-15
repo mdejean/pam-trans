@@ -107,15 +107,6 @@ SECTIONS
     SRAM2 : {
         . = ALIGN(4);
     } > SRAM2
-
- 
-    /* Remove information from the standard libraries */
-    /DISCARD/ :
-    {
-        libc.a ( * )
-        libm.a ( * )
-        libgcc.a ( * )
-    }
  
     .ARM.attributes 0 : { *(.ARM.attributes) }
 }

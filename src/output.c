@@ -4,6 +4,7 @@
 #include "stm32f4xx_tim.h"
 #include "stm32f4xx_rcc.h"
 #include "stm32f4xx_dac.h"
+#include "misc.h"
 
 #include "output.h"
 
@@ -134,6 +135,12 @@ bool output_init(output_state* o) {
     DMA_ClearITPendingBit(DMA1_Stream6, DMA_IT_TCIF6);  
     DMA_ITConfig(DMA1_Stream6, DMA_IT_TC, ENABLE);
     
+    NVIC_InitTypeDef dma_irq;
+    dma_irq.NVIC_IRQChannel = DMA1_Stream6_IRQn;
+    dma_irq.NVIC_IRQChannelPreemptionPriority = 18;
+    dma_irq.NVIC_IRQChannelSubPriority = 1;
+    dma_irq.NVIC_IRQChannelCmd = ENABLE;
+    NVIC_Init(&dma_irq);
     //DMA_Cmd(DMA1_Stream6, ENABLE);
     
     peripherals_initialized = true;

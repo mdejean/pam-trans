@@ -5,6 +5,7 @@
 #include "stm32f4xx_gpio.h"
 #include "stm32f4xx_tim.h"
 #include "stm32f4xx_rcc.h"
+#include "misc.h"
 
 #include "display.h"
 
@@ -22,17 +23,17 @@ void TIM2_IRQHandler() {
     case 0:
       //set RS and bits if we have something to do
       if (character_to_write > 0) {
-        GPIO_SetBits(GPIOE, 0x80 + ((uint8_t)character_to_write >> 8)); //unsigned so we don't sign-extend
+        GPIO_Write(GPIOE, 0x80 + ((uint8_t)character_to_write >> 8)); //unsigned so we don't sign-extend
         character_to_write = 0;
         display_state++;
       }
       break;
     case 1:
-      GPIO_SetBits(GPIOB, 1); //set E
+      GPIO_Write(GPIOB, 1); //set E
       display_state++;
       break;
     case 2:
-      GPIO_SetBits(GPIOB, 0); //clear E
+      GPIO_Write(GPIOB, 0); //clear E
       display_state = 0;
       if (character_to_write == 0) {
         //we're done
@@ -75,16 +76,23 @@ void display_init() {
   tim2.TIM_CounterMode = TIM_CounterMode_Up;
 
   TIM_TimeBaseInit(TIM2, &tim2);
-  //set TIM6 to generate Update events
+  //set TIM2 to generate Update events
   TIM_SelectOutputTrigger(TIM2, TIM_TRGOSource_Update);
   
   TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
-  /* TIM6 enable counter */
+  
+  NVIC_InitTypeDef tim2_irq;
+  tim2_irq.NVIC_IRQChannel = TIM2_IRQn;
+  tim2_irq.NVIC_IRQChannelPreemptionPriority = 100; //FIXME: should have a file with irq priorities
+  tim2_irq.NVIC_IRQChannelSubPriority = 1;
+  tim2_irq.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&tim2_irq);
+  
+  /* TIM2 enable counter */
   TIM_Cmd(TIM2, ENABLE);
   //set 8-bit, two line mode
   GPIO_SetBits(GPIOE, 0x3C);
-  //this may result in an extra cycle wait. Good.
-  display_state = 0;
+  display_state = 1;
 }
 
 bool display_ready() {

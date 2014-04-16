@@ -36,6 +36,9 @@ size_t name_pos; //position in name string
 #define UI_PIN_SHIFT 8
 GPIO_InitTypeDef gpiod_config;
 
+#define STATUS_PIN_MASK 0x0F
+GPIO_InitTypeDef gpioc_config;
+
 #define SIGNIFICANT_FIGURES 4
 size_t float_to_string(char* s, size_t len, float f) {
   if (len < SIGNIFICANT_FIGURES + 7) return 0;//7 = +.e+99\0
@@ -99,10 +102,18 @@ bool ui_init(const ui_entry* entries, size_t count) {
   //PD8-15: up down left right enter cancel
   RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE);
   gpiod_config.GPIO_Pin = UI_PIN_MASK; 
-  gpiod_config.GPIO_Mode = GPIO_Mode_OUT;
+  gpiod_config.GPIO_Mode = GPIO_Mode_IN;
   gpiod_config.GPIO_PuPd = GPIO_PuPd_UP;
   gpiod_config.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_Init(GPIOD, &gpiod_config);
+  
+  //set up outputs
+  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE);
+  gpioc_config.GPIO_Pin = 0x0f; 
+  gpioc_config.GPIO_Mode = GPIO_Mode_OUT;
+  gpioc_config.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  gpioc_config.GPIO_Speed = GPIO_Speed_25MHz;
+  GPIO_Init(GPIOC, &gpioc_config);
   
   //set up TIM3 to count at ~100Hz for debouncing
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
@@ -193,6 +204,14 @@ void ui_tick() {
   }
   
   //todo: update status - error paused time?
+}
+
+void ui_set_status(uint8_t o) {
+  GPIO_Write(GPIOC, o & STATUS_PIN_MASK);  
+}
+
+uint8_t ui_get_status() {
+  return GPIO_ReadOutputData(GPIOC) & STATUS_PIN_MASK;
 }
 
 bool ui_callback_none(const ui_entry* entry, ui_button button) {

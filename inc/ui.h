@@ -44,4 +44,8 @@ void ui_tick();
 //a callback that does nothing
 bool ui_callback_none(const ui_entry* entry, ui_button button);
 
+void ui_set_status(uint8_t o);
+
+uint8_t ui_get_status();
+
 #endif

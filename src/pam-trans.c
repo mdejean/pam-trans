@@ -151,9 +151,16 @@ int main(void) {
     //4. Update the UI
     ui_tick();
     
-    //if(DMA_GetITStatus(DMA1_Stream6, DMA_IT_TCIF6)) {
-    //  DMA1_Stream6_IRQHandler(); //shits not working yo
-    //}
+    if (output_stalled()) {
+      ui_set_status(ui_get_status() | 0x1); //TODO: give names to pins
+    } else {
+      ui_set_status(ui_get_status() & ~0x1); //TODO: give names to pins
+    }
+    if (symbols_position == 0) {
+      ui_set_status(ui_get_status() | 0x2);
+    } else {
+      ui_set_status(ui_get_status() & ~0x2); //TODO: give names to pins
+    }
   }
 }
 

@@ -125,6 +125,7 @@ bool ui_init(const ui_entry* entries, size_t count) {
   tim3.TIM_CounterMode = TIM_CounterMode_Up;
 
   TIM_TimeBaseInit(TIM3, &tim3);
+  TIM_Cmd(TIM3, ENABLE);
   
   display_init();
   return true;
@@ -171,12 +172,14 @@ void ui_tick() {
       uint16_t input_change = prev_input & ~new_input; //buttons pressed - new_input will be low (active low), prev_input high
       prev_input = new_input;
       //call the callback
-      if (ui_entries[current_entry].callback(&ui_entries[current_entry], input_change)) {
-        //assume we need to update value
-        update_value();
-      } else {
-        //button press not consumed - do default behaviors
-        ui_update(input_change);
+      if (input_change) {
+        if (ui_entries[current_entry].callback(&ui_entries[current_entry], input_change)) {
+          //assume we need to update value
+          update_value();
+        } else {
+          //button press not consumed - do default behaviors
+          ui_update(input_change);
+        }
       }
     }
   }
@@ -186,6 +189,8 @@ void ui_tick() {
       if (value_str[value_pos] && value_pos < UI_MAX_VALUE_LENGTH) {
         display_set(value_str[value_pos], 20+value_pos, 0);
         value_pos++;
+      } else {
+        ui_state = IDLE;
       }
     }
   }
@@ -201,6 +206,11 @@ void ui_tick() {
         update_value();
       }
     }
+  }
+  
+  if (ui_state == INIT) {
+    //TODO: draw display at the beginning. Maybe we should start paused?
+    ui_state = IDLE;
   }
   
   //todo: update status - error paused time?

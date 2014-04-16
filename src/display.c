@@ -15,29 +15,58 @@ GPIO_InitTypeDef gpioe_config;
 GPIO_InitTypeDef gpiob_config;
 
 char character_to_write; 
-int display_state;
+int display_cycle;
+
+enum {
+  INIT1,
+  INIT2,
+  IDLE,
+  WRITING_ADDRESS,
+  WRITING_CHARACTER
+} display_state;
 
 void TIM2_IRQHandler() {
   TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
-  switch (display_state) {
+  switch (display_cycle) {
     case 0:
-      //set RS and bits if we have something to do
-      if (character_to_write > 0) {
-        GPIO_Write(GPIOE, 0x80 + ((uint8_t)character_to_write >> 8)); //unsigned so we don't sign-extend
-        character_to_write = 0;
-        display_state++;
+      switch (display_state) {
+        case WRITING_CHARACTER:
+          //set RS and bits
+          GPIO_Write(GPIOE, 0x80 + ((uint8_t)character_to_write << 8)); //unsigned so we don't sign-extend
+          character_to_write = 0;
+          break;
+        case INIT2:
+          GPIO_Write(GPIOE, 0x01 << 8);
+          break;
+        default:
+          break;
+      }
+      if (display_state != IDLE) {
+        display_cycle++;
       }
       break;
     case 1:
       GPIO_Write(GPIOB, 1); //set E
-      display_state++;
+      display_cycle++;
       break;
     case 2:
       GPIO_Write(GPIOB, 0); //clear E
-      display_state = 0;
-      if (character_to_write == 0) {
-        //we're done
-        TIM_SetAutoreload(TIM2, 0);
+      display_cycle = 0;
+      switch (display_state) {
+        case INIT1:
+          display_state = INIT2;
+          break;
+        case INIT2:
+          display_state = IDLE;
+          break;
+        case WRITING_ADDRESS:
+          display_state = WRITING_CHARACTER;
+          break;
+        case WRITING_CHARACTER:
+          display_state = IDLE;
+          break;
+        default:
+          break;
       }
       break;
   }
@@ -45,10 +74,9 @@ void TIM2_IRQHandler() {
 
 void display_set(char c, uint8_t x, uint8_t y) {
   if (display_ready()) {
-    GPIO_SetBits(GPIOE, (uint8_t)(x + 0x40 * y) >> 8); //send address
     character_to_write = c;
-    display_state = 1;
-    TIM_SetAutoreload(TIM2, DISPLAY_PERIOD);
+    GPIO_Write(GPIOE, (uint8_t)(x + 0x40 * y) << 8); //send address
+    display_state = WRITING_ADDRESS;
   }
 }
 
@@ -90,13 +118,14 @@ void display_init() {
   
   /* TIM2 enable counter */
   TIM_Cmd(TIM2, ENABLE);
-  //set 8-bit, two line mode
-  GPIO_SetBits(GPIOE, 0x3C);
-  display_state = 1;
+  //set 8-bit, two line mode, enable display
+  GPIO_SetBits(GPIOE, 0x3C << 8);
+  display_cycle = 1;
+  display_state = INIT1;
 }
 
 bool display_ready() {
-  if (character_to_write == 0 && display_state == 0) {
+  if (display_state == IDLE && display_cycle == 0) {
     return true;
   }
   return false;

@@ -66,9 +66,9 @@ output_state output = {
 };
 
 const ui_entry ui[] = {
-  {.type = UI_ENTRY_STRING, .name = "Message:", .value = &message[0], .callback = ui_callback_none},
-  {.type = UI_ENTRY_STRING, .name = "Framing:", .value = &header[0], .callback = ui_callback_none},
-  {.type = UI_ENTRY_UINT32, .name = "Output sample rate:", .value = &output.sample_rate, .callback = ui_callback_none},
+  {.name = "Message:", .value = &message[0], .callback = ui_callback_none, .display = ui_display_name_only},
+  {.name = "Framing:", .value = &header[0], .callback = ui_callback_none, .display = ui_display_name_only},
+  {.name = "Output sample rate:", .value = &output.sample_rate, .callback = ui_callback_none, .display = ui_display_name_only},
 };
 
 

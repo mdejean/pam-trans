@@ -1,7 +1,4 @@
 #include <stdbool.h>
-#include <string.h>
-#include <math.h>
-
 
 #include "stm32f4xx_gpio.h"
 #include "stm32f4xx_tim.h"
@@ -22,15 +19,11 @@ size_t current_entry;
 enum ui_state {
   INIT,
   IDLE,
-  NEW_ENTRY,
-  UPDATED_VALUE,
+  UPDATED,
 } ui_state;
 
-char value_str_storage[UI_MAX_VALUE_LENGTH]; //string of current value
-const char* value_str;
-size_t value_pos; //position in current value string
-
-size_t name_pos; //position in name string
+char display[UI_MAX_LENGTH]; //string of current value
+size_t display_pos; //position in current value string
 
 #define UI_PIN_MASK 0xff00
 #define UI_PIN_SHIFT 8
@@ -39,61 +32,7 @@ GPIO_InitTypeDef gpiod_config;
 #define STATUS_PIN_MASK 0x0F
 GPIO_InitTypeDef gpioc_config;
 
-#define SIGNIFICANT_FIGURES 4
-size_t float_to_string(char* s, size_t len, float f) {
-  if (len < SIGNIFICANT_FIGURES + 7) return 0;//7 = +.e+99\0
-  //the ok method
-  if (f<0) {
-    f = -f;
-    s[0] = '-';
-  } else {
-    s[0] = '+';
-  }
-  int exponent_10 = floorf(log10f(f)); 
-  int n = f * powf(10, -exponent_10 - 1 + SIGNIFICANT_FIGURES);
-  int i;
-  for (i = SIGNIFICANT_FIGURES+1; i > 0; i--) {
-    s[i] = '0' + (n % 10);
-    if (i == 3) s[--i] = '.'; //3 = +x.3 0123
-    n /= 10;
-  }
-  s[SIGNIFICANT_FIGURES+2] = 'e';
-  if (exponent_10 < 0) {
-    exponent_10 = -exponent_10;
-    s[SIGNIFICANT_FIGURES+3] = '-';
-  } else {
-    s[SIGNIFICANT_FIGURES+3] = '+';
-  }
-  s[SIGNIFICANT_FIGURES+4] = '0'+exponent_10 / 10;
-  s[SIGNIFICANT_FIGURES+5] = '0'+exponent_10 % 10;
-  s[SIGNIFICANT_FIGURES+6] = '\0';
-  return i;
-}
-
-size_t uint32_t_to_string(char* s, size_t len, uint32_t n) {
-  if (len < 11) return 0;
-  //i apologize sincerely for the following
-  int i=0;
-  #define J(K) if (n>K) { s[i++] = '0'+(n / K); n -= n / K; }
-  J(1000000000);
-  J(100000000);
-  J(10000000);
-  J(1000000);
-  J(100000);
-  J(10000);
-  J(1000);
-  J(100);
-  J(10);
-  s[i++] = '0'+n;
-  return i;
-}
-
 bool ui_init(const ui_entry* entries, size_t count) {
-  for (size_t i=0;i<count;i++) {
-    if (strlen(entries[i].name) > UI_MAX_NAME_LENGTH) {
-      return false;
-    }
-  }
   
   ui_entries = entries;
   num_entries = count;
@@ -128,39 +67,29 @@ bool ui_init(const ui_entry* entries, size_t count) {
   TIM_Cmd(TIM3, ENABLE);
   
   display_init();
+  
+  ui_state = INIT;
+  
   return true;
 }
 
-void update_value() {
-  if (ui_entries[current_entry].type == UI_ENTRY_UINT32) {
-    uint32_t_to_string(value_str_storage, 
-      sizeof(value_str_storage), 
-      *(uint32_t*)ui_entries[current_entry].value);
-    value_str = value_str_storage;
-  } else if (ui_entries[current_entry].type == UI_ENTRY_FLOAT) {
-    float_to_string(value_str_storage, 
-      sizeof(value_str_storage), 
-      *(float*)ui_entries[current_entry].value);
-    value_str = value_str_storage;
-  } else if (ui_entries[current_entry].type == UI_ENTRY_STRING) {
-    value_str = (const char*)ui_entries[current_entry].value;
-  }
-  
-  value_pos = 0;
-  ui_state = UPDATED_VALUE;
+void ui_refresh() {
+  ui_entries[current_entry].display(display, &ui_entries[current_entry]);
+  ui_state = UPDATED;
 }
 
-void ui_update(uint16_t button) {
+bool ui_update(uint16_t button) {
   if (button & UI_BUTTON_UP) {
     current_entry = (current_entry + 1);
     if (current_entry >= num_entries) current_entry = 0;
-    ui_state = NEW_ENTRY;
+    return true;
   }
   if (button & UI_BUTTON_DOWN) {
     if (current_entry == 0) current_entry = num_entries;
     current_entry = (current_entry - 1);
-    ui_state = NEW_ENTRY;
+    return true;
   }
+  return false;
 }
 
 void ui_tick() {
@@ -171,49 +100,38 @@ void ui_tick() {
       uint16_t new_input = (GPIO_ReadInputData(GPIOD) & UI_PIN_MASK) >> UI_PIN_SHIFT;
       uint16_t input_change = prev_input & ~new_input; //buttons pressed - new_input will be low (active low), prev_input high
       prev_input = new_input;
-      //call the callback
+      //soapbox: this could be written as a single if statement 
+      //with short-circuit evaluation, but that would be dumb
       if (input_change) {
         if (ui_entries[current_entry].callback(&ui_entries[current_entry], input_change)) {
-          //assume we need to update value
-          update_value();
+          //something happened. update the display
+          ui_refresh();
         } else {
           //button press not consumed - do default behaviors
-          ui_update(input_change);
+          if (ui_update(input_change)) {
+            ui_refresh();
+          }
         }
       }
     }
   }
   
-  if (ui_state == UPDATED_VALUE) {
+  if (ui_state == UPDATED) {
     if (display_ready()) {
-      if (value_str[value_pos] && value_pos < UI_MAX_VALUE_LENGTH) {
-        display_set(value_str[value_pos], 20+value_pos, 0);
-        value_pos++;
+      if (display_pos < UI_MAX_LENGTH) {
+        //is this the right place to be replacing nulls with spaces?
+        display_set(display[display_pos] ? display[display_pos]  : ' ', display_pos, 0);
+        display_pos++;
       } else {
+        display_pos = 0;
         ui_state = IDLE;
       }
     }
   }
   
-  if (ui_state == NEW_ENTRY) {
-    //print the name
-    if (display_ready()) {
-      if (ui_entries[current_entry].name[name_pos]) {
-        display_set(ui_entries[current_entry].name[name_pos],name_pos, 0);
-        name_pos++;
-      } else {
-        //done drawing the name, now show the value
-        update_value();
-      }
-    }
-  }
-  
   if (ui_state == INIT) {
-    //TODO: draw display at the beginning. Maybe we should start paused?
-    ui_state = IDLE;
+    ui_refresh();
   }
-  
-  //todo: update status - error paused time?
 }
 
 void ui_set_status(uint8_t o) {
@@ -226,4 +144,14 @@ uint8_t ui_get_status() {
 
 bool ui_callback_none(const ui_entry* entry, ui_button button) {
   return false;
+}
+
+void ui_display_name_only(char ui[UI_MAX_LENGTH], const ui_entry* entry) {
+  int j=0;
+  for (int i=0; i<UI_MAX_LENGTH; i++) {
+    ui[i] = entry->name[j];
+    if (entry->name[j]) {
+      j++;
+    }
+  }
 }

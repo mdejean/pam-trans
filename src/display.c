@@ -20,6 +20,7 @@ int display_cycle;
 enum {
   INIT1,
   INIT2,
+  INIT3,
   IDLE,
   WRITING_ADDRESS,
   WRITING_CHARACTER
@@ -36,7 +37,10 @@ void TIM2_IRQHandler() {
           character_to_write = 0;
           break;
         case INIT2:
-          GPIO_Write(GPIOE, 0x01 << 8);
+          GPIO_Write(GPIOE, 0x0C << 8);
+          break;
+        case INIT3:
+          GPIO_Write(GPIOE, 0x06 << 8);
           break;
         default:
           break;
@@ -54,10 +58,9 @@ void TIM2_IRQHandler() {
       display_cycle = 0;
       switch (display_state) {
         case INIT1:
-          display_state = INIT2;
-          break;
         case INIT2:
-          display_state = IDLE;
+        case INIT3:
+          display_state++; //go to next init state or idle
           break;
         case WRITING_ADDRESS:
           display_state = WRITING_CHARACTER;
@@ -75,7 +78,7 @@ void TIM2_IRQHandler() {
 void display_set(char c, uint8_t x, uint8_t y) {
   if (display_ready()) {
     character_to_write = c;
-    GPIO_Write(GPIOE, (uint8_t)(x + 0x40 * y) << 8); //send address
+    GPIO_Write(GPIOE, 0x8000 | ((x + 0x40U * y) << 8)); //send address
     display_state = WRITING_ADDRESS;
   }
 }
@@ -87,12 +90,14 @@ void display_init() {
   gpioe_config.GPIO_Pin = 0xFF80; //pins 7-15 rs db0-7 (r/w always 0)
   gpioe_config.GPIO_Mode = GPIO_Mode_OUT;
   gpioe_config.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  gpioe_config.GPIO_OType = GPIO_OType_OD;
   gpioe_config.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_Init(GPIOE, &gpioe_config);
   
   gpiob_config.GPIO_Pin = 0x0001; //b1 = E  
   gpiob_config.GPIO_Mode = GPIO_Mode_OUT;
-  gpiob_config.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  gpiob_config.GPIO_PuPd = GPIO_PuPd_Up;
+  gpiob_config.GPIO_OType = GPIO_OType_OD;
   gpiob_config.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_Init(GPIOB, &gpiob_config);
   
@@ -119,7 +124,7 @@ void display_init() {
   /* TIM2 enable counter */
   TIM_Cmd(TIM2, ENABLE);
   //set 8-bit, two line mode, enable display
-  GPIO_SetBits(GPIOE, 0x3C << 8);
+  GPIO_SetBits(GPIOE, 0x3F << 8);
   display_cycle = 1;
   display_state = INIT1;
 }

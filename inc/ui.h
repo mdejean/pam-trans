@@ -4,8 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define UI_MAX_NAME_LENGTH 20
-#define UI_MAX_VALUE_LENGTH 20
+#define UI_MAX_LENGTH 20
 
 typedef enum ui_entry_type {
   UI_ENTRY_UINT32 = 1,
@@ -28,11 +27,13 @@ typedef struct ui_entry ui_entry;
 //return true to consume the button press
 typedef bool (*ui_callback)(const ui_entry* entry, ui_button button);
 
+typedef void (*ui_display)(char ui[UI_MAX_LENGTH], const ui_entry* entry);
+
 struct ui_entry {
-  ui_entry_type type;
   const char* name;
   void* value;
   ui_callback callback;
+  ui_display display;
   void* user_data;
 };
 
@@ -43,6 +44,11 @@ void ui_tick();
 
 //a callback that does nothing
 bool ui_callback_none(const ui_entry* entry, ui_button button);
+
+void ui_display_name_only(char ui[UI_MAX_LENGTH], const ui_entry* entry);
+
+void ui_display_uint32(char ui[UI_MAX_LENGTH], const ui_entry* entry);
+
 
 void ui_set_status(uint8_t o);
 

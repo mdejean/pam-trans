@@ -24,10 +24,11 @@ typedef enum ui_button {
 //forward declaration because callback is in and takes struct
 typedef struct ui_entry ui_entry;
 
+//time: count of ui ticks
 //return true to consume the button press
-typedef bool (*ui_callback)(const ui_entry* entry, ui_button button);
+typedef bool (*ui_callback)(const ui_entry* entry, ui_button button, uint32_t time);
 
-typedef void (*ui_display)(char ui[UI_MAX_LENGTH], const ui_entry* entry);
+typedef void (*ui_display)(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time);
 
 struct ui_entry {
   const char* name;
@@ -43,12 +44,9 @@ bool ui_init(const ui_entry* entries, size_t count);
 void ui_tick();
 
 //a callback that does nothing
-bool ui_callback_none(const ui_entry* entry, ui_button button);
+bool ui_callback_none(const ui_entry* entry, ui_button button, uint32_t time);
 
-void ui_display_name_only(char ui[UI_MAX_LENGTH], const ui_entry* entry);
-
-void ui_display_uint32(char ui[UI_MAX_LENGTH], const ui_entry* entry);
-
+void ui_display_name_only(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time);
 
 void ui_set_status(uint8_t o);
 

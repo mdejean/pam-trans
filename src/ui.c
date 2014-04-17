@@ -25,6 +25,8 @@ enum ui_state {
 char display[UI_MAX_LENGTH]; //string of current value
 size_t display_pos; //position in current value string
 
+uint32_t time;
+
 #define UI_PIN_MASK 0xff00
 #define UI_PIN_SHIFT 8
 GPIO_InitTypeDef gpiod_config;
@@ -74,7 +76,7 @@ bool ui_init(const ui_entry* entries, size_t count) {
 }
 
 void ui_refresh() {
-  ui_entries[current_entry].display(display, &ui_entries[current_entry]);
+  ui_entries[current_entry].display(display, &ui_entries[current_entry], time);
   ui_state = UPDATED;
 }
 
@@ -103,7 +105,7 @@ void ui_tick() {
       //soapbox: this could be written as a single if statement 
       //with short-circuit evaluation, but that would be dumb
       if (input_change) {
-        if (ui_entries[current_entry].callback(&ui_entries[current_entry], input_change)) {
+        if (ui_entries[current_entry].callback(&ui_entries[current_entry], input_change, time)) {
           //something happened. update the display
           ui_refresh();
         } else {
@@ -113,6 +115,7 @@ void ui_tick() {
           }
         }
       }
+      time++;
     }
   }
   

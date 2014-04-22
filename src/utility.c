@@ -32,11 +32,11 @@ size_t float_to_string(char* s, size_t len, float f) {
   return SIGNIFICANT_FIGURES+5;
 }
 
-size_t uint32_t_to_string(char* s, size_t len, uint32_t n) {
+size_t uint32_to_string(char* s, size_t len, uint32_t n) {
   if (len < 11) return 0;
   //i apologize sincerely for the following
   int i=0;
-  #define J(K) if (n>K) { s[i++] = '0'+(n / K); n -= n / K; }
+  #define J(K) if (n>K) { s[i++] = '0'+(n / K); n = n % K; }
   J(1000000000);
   J(100000000);
   J(10000000);
@@ -47,7 +47,6 @@ size_t uint32_t_to_string(char* s, size_t len, uint32_t n) {
   J(100);
   J(10);
   s[i++] = '0'+n;
-  s[i++] = '\0';
   return i;
 }
 

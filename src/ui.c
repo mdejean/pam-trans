@@ -145,11 +145,11 @@ uint8_t ui_get_status() {
   return GPIO_ReadOutputData(GPIOC) & STATUS_PIN_MASK;
 }
 
-bool ui_callback_none(const ui_entry* entry, ui_button button) {
+bool ui_callback_none(const ui_entry* entry, ui_button button, uint32_t time) {
   return false;
 }
 
-void ui_display_name_only(char ui[UI_MAX_LENGTH], const ui_entry* entry) {
+void ui_display_name_only(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time) {
   int j=0;
   for (int i=0; i<UI_MAX_LENGTH; i++) {
     ui[i] = entry->name[j];

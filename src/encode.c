@@ -1,7 +1,7 @@
 #include <string.h> //for memcpy
 #include "encode.h"
 
-bool encode_init(encode_state* s)
+bool encode_init(encode_state* s) {
   if (s->frame_len < 1) return false;
   if (s->start_framing) return false;  
   if (s->end_framing) return false;
@@ -16,7 +16,7 @@ size_t frame_message(
     size_t data_len,
     size_t* data_used) {
   
-  if (data_len < s->frame_len + s->start_framing_len + s->end_framing_len)) {
+  if (data_len < s->frame_len + s->start_framing_len + s->end_framing_len) {
     return 0;
   }
   size_t data_pos = 0;
@@ -25,8 +25,8 @@ size_t frame_message(
   if (message_len < s->frame_len) {
     next_frame_len = message_len;
   }
-  
-  for (size_t i = 0; 
+  size_t i;
+  for (i = 0; 
       i < message_len 
       && data_pos 
         + s->start_framing_len 
@@ -55,8 +55,8 @@ size_t frame_message(
       next_frame_len = message_len - i;
     }
   }
-  if (message_consumed != NULL) { 
-    *data_consumed = data_moving;
+  if (data_used != NULL) { 
+    *data_used = data_pos;
   }
   return i;
 }
@@ -68,7 +68,8 @@ size_t encode_data(
     sample_t* symbols, 
     size_t symbols_len,
     size_t* symbols_used) {
-  for (size_t i = 0; i < data_len && 4*i < symbols_len; i++) {
+  size_t i;
+  for (i = 0; i < data_len && 4*i < symbols_len; i++) {
     //it would be better to gray-code these, but we don't for compatibility
     symbols[4*i + 0] = -SAMPLE_MAX + (SAMPLE_MAX/3) * 2 * (data[i] & 0x03);
     symbols[4*i + 1] = -SAMPLE_MAX + (SAMPLE_MAX/3) * 2 * ((data[i] & 0x0C) >> 2);

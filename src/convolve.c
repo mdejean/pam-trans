@@ -9,16 +9,16 @@
 
 //no malloc
 sample_t pulse_storage[MAX_PULSE_LENGTH];
-sample_t edge_symbols_storage[MAX_PULSE_SYMBOLS]; //no need to be skimpy
+sample_t edge_symbols_storage[MAX_PULSE_SYMBOLS];
 
 bool convolve_init_srrc(convolve_state* state) {
   if (state->overlap * 2 * state->M > MAX_PULSE_LENGTH) return false;
-  if (state->overlap > state->MAX_PULSE_SYMBOLS) return false;
+  if (state->overlap > MAX_PULSE_SYMBOLS) return false;
   state->pulse_shape_len = 2 * state->overlap * state->M;
   state->amplitude_corr = (1+M_PI)/M_PI * 4.0f *state->beta/sqrtf((float)state->M) / 0.9f;
   //singleton :(
   state->edge_symbols = edge_symbols_storage;
-  memset(state->edge_symbols, 0, overlap * sizeof(sample_t));
+  memset(state->edge_symbols, 0, state->overlap * sizeof(sample_t));
   state->pulse_shape = pulse_storage;
 
   float k;
@@ -49,7 +49,7 @@ size_t convolve(
   if (state->overlap < 2 || state->M < 2 || state->pulse_shape_len < 8) return 0;
   
   //only use as many symbols as we can fit
-  if ((num_symbols - state->overlap) * state->M > envelope_s) {
+  if ((num_symbols - state->overlap) * state->M > envelope_len) {
     num_symbols = envelope_len / state->M + state->overlap;
   }
 

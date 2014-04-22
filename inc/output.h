@@ -6,7 +6,7 @@
 #include <stddef.h>
 
 typedef struct output_state_s {
-  uint32_t sample_rate;
+  uint32_t period;
   uint8_t* region_one;
   uint8_t* region_two;
   size_t output_buffer_length;

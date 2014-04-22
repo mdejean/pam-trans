@@ -11,18 +11,11 @@
 sample_t pulse_storage[MAX_PULSE_LENGTH];
 sample_t edge_symbols_storage[MAX_PULSE_SYMBOLS]; //no need to be skimpy
 
-bool convolve_init_srrc(
-    convolve_state* state,
-    float beta,
-    size_t overlap,
-    size_t M) {
-  if (overlap * 2 * M > MAX_PULSE_LENGTH) return false;
-  if (overlap > MAX_PULSE_SYMBOLS) return false;
-  state->beta = beta;
-  state->overlap = overlap;
-  state->M = M;
-  state->pulse_shape_len = 2 * overlap * M;
-  state->amplitude_corr = (1+M_PI)/M_PI * 4.0f *beta/sqrtf((float)M) / 0.9f;
+bool convolve_init_srrc(convolve_state* state) {
+  if (state->overlap * 2 * state->M > MAX_PULSE_LENGTH) return false;
+  if (state->overlap > state->MAX_PULSE_SYMBOLS) return false;
+  state->pulse_shape_len = 2 * state->overlap * state->M;
+  state->amplitude_corr = (1+M_PI)/M_PI * 4.0f *state->beta/sqrtf((float)state->M) / 0.9f;
   //singleton :(
   state->edge_symbols = edge_symbols_storage;
   memset(state->edge_symbols, 0, overlap * sizeof(sample_t));
@@ -34,11 +27,11 @@ bool convolve_init_srrc(
     // 0.9 is a fudge factor, should actually be the 1/the sum of 2*overlap samples at the sample point
     state->pulse_shape[i] = float_to_sample(M_PI/(1+M_PI) * 0.9f *
 
-            (cosf( (1+beta) * M_PI * k/M) +   sinf((1-beta) * M_PI * k/M)
+            (cosf( (1+state->beta) * M_PI * k/state->M) +   sinf((1-state->beta) * M_PI * k/state->M)
 //          (                                ----------------------------  )
-                                                 /(4*beta*k/M) )
+                                                 /(4*state->beta*k/state->M) )
 //          -------------------------------------------------------------
-                 / ( M_PI * (1 - 16 * (beta*k/M)*(beta*k/M) ))
+                 / ( M_PI * (1 - 16 * (state->beta*k/state->M)*(state->beta*k/state->M) ))
         );
   }
   return true;
@@ -50,10 +43,15 @@ size_t convolve(
     const sample_t* restrict symbols,
     size_t num_symbols,
     sample_t* restrict envelope,
-    size_t envelope_s) {//TODO: envelope_s should be used, or at least asserted!
-
+    size_t envelope_len,
+    size_t* restrict envelope_used) {//TODO: envelope_s should be used, or at least asserted!
   //allow compiler to make more assumptions
-  if (state->overlap < 2 || state->M < 2 || state->pulse_shape_len < 10) return 0;
+  if (state->overlap < 2 || state->M < 2 || state->pulse_shape_len < 8) return 0;
+  
+  //only use as many symbols as we can fit
+  if ((num_symbols - state->overlap) * state->M > envelope_s) {
+    num_symbols = envelope_len / state->M + state->overlap;
+  }
 
   //first deal with the symbols from the previous block
   for (int i = 0; i < state->overlap; i++) {
@@ -99,6 +97,10 @@ size_t convolve(
   //low prio fixme: ignoring the possibilty that we converted less than syms symbols this time
   //set up edge_symbols for next time
   memcpy(state->edge_symbols, &symbols[i - state->overlap], sizeof(sample_t) * state->overlap);
-  return num_symbols - state->overlap;
+  if (envelope_used != NULL) {
+    *envelope_used = (num_symbols - state->overlap) * state->M; //samples
+  }
+  
+  return num_symbols - state->overlap; //symbols
 }
 

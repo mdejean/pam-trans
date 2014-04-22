@@ -19,11 +19,7 @@ typedef struct convolve_state_ {
 } convolve_state;
 
 //Generate the pulse shape
-bool convolve_init_srrc(
-    convolve_state* state, 
-    float beta, 
-    size_t overlap,
-    size_t M);
+bool convolve_init_srrc(convolve_state* state);
 
 /*convolve - convert symbols (at baudrate) to the PAM envelope (at Fs)
  state - convolver settings and state
@@ -41,6 +37,7 @@ size_t convolve(
     const sample_t* symbols, 
     size_t num_symbols, 
     sample_t* envelope,
-    size_t envelope_s);
+    size_t envelope_s,
+    size_t* envelope_used);
     
 #endif

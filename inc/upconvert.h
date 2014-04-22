@@ -16,7 +16,7 @@ typedef struct upconvert_state_ {
   size_t phase; //current position in the carrier
 } upconvert_state;
 
-bool upconvert_init(upconvert_state* s, size_t M, size_t N);
+bool upconvert_init(upconvert_state* s);
 //TODO: add alternate init functions for carrier frequencies other than M/N
 
 

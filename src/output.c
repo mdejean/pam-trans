@@ -22,10 +22,10 @@ DMA_InitTypeDef dma_config;
 DAC_InitTypeDef dac_config;
 GPIO_InitTypeDef gpioa_config;
 
-void update_output_sample_rate(uint32_t output_sample_rate) {
+void update_period(uint32_t period) {
   static TIM_TimeBaseInitTypeDef timebase;
   /* Time base configuration */
-  timebase.TIM_Period = (SystemCoreClock / 8) / output_sample_rate; //e.g. 168 for 1MHz
+  timebase.TIM_Period = period; //e.g. 168 for 1MHz
   timebase.TIM_Prescaler = 0;
   timebase.TIM_ClockDivision = 0;
   timebase.TIM_CounterMode = TIM_CounterMode_Up;
@@ -96,7 +96,7 @@ bool output_init(output_state* o) {
     gpioa_config.GPIO_PuPd = GPIO_PuPd_NOPULL;
     GPIO_Init(GPIOA, &gpioa_config);
 
-    update_output_sample_rate(o->sample_rate); //sets up TIM6 counting
+    update_period(o->sample_rate); //sets up TIM6 counting
 
     /* DAC channel2 Configuration */
     dac_config.DAC_Trigger = DAC_Trigger_T6_TRGO;
@@ -148,7 +148,7 @@ bool output_init(output_state* o) {
   front_buffer = o->region_one;
   back_buffer = o->region_two;
   back_fill_length = 0;
-  update_output_sample_rate(o->sample_rate);
+  update_period(o->sample_rate);
   
   return true;
 }

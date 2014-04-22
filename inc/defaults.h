@@ -1,7 +1,7 @@
 #ifndef DEFAULTS_H
 #define DEFAULTS_H
 
-#define DEFAULT_PERIOD 150
+#define DEFAULT_OUTPUT_PERIOD 200
 
 #define DEFAULT_MESSAGE \
 "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, " \
@@ -11,10 +11,14 @@
 "the period was so far like the present period, that some of its noisiest authorities insisted on its being " \
 "received, for good or for evil, in the superlative degree of comparison only."
 
-#define DEFAULT_FRAMING "IntroDigitalCommunications:eecs354:mxb11:profbuchner"
+#define DEFAULT_HEADER "IntroDigitalCommunications:eecs354:mxb11:profbuchner"
+#define DEFAULT_FRAME_LENGTH 100
 
 #define DEFAULT_CONVOLVE_OVERSAMPLING 100
 #define DEFAULT_OVERLAP_SYMBOLS 4
 #define DEFAULT_BETA 0.2f
+
+#define DEFAULT_UPCONVERT_PERIOD 10
+#define DEFAULT_UPCONVERT_OVERSAMPLING 1
 
 #endif

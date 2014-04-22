@@ -15,21 +15,15 @@
 #include "output.h"
 #include "ui.h"
 
+#include "utility.h"
+
 #include "defaults.h"
 
 #define OUTPUT_BUFFER_LENGTH 2048 //2KB
 
-#define SRRC_OVERLAP 4
-
 #define MAX_MESSAGE_LENGTH 1000
 #define BITS_PER_SYMBOL 2
-char message[MAX_MESSAGE_LENGTH] = 
-"It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness, "
-"it was the epoch of belief, it was the epoch of incredulity, it was the season of Light, it was the season of "
-"Darkness, it was the spring of hope, it was the winter of despair, we had everything before us, we had "
-"nothing before us, we were all going direct to Heaven, we were all going direct the other way-in short, "
-"the period was so far like the present period, that some of its noisiest authorities insisted on its being "
-"received, for good or for evil, in the superlative degree of comparison only.";
+char message[MAX_MESSAGE_LENGTH] = DEFAULT_MESSAGE;
 
 #define MIN_FRAME_LENGTH 40
 #define MAX_HEADER_LENGTH 100
@@ -37,12 +31,12 @@ char message[MAX_MESSAGE_LENGTH] =
 #define MAX_DATA_LENGTH 2000
 uint8_t data[MAX_DATA_LENGTH]; //2K
 
-char header[MAX_HEADER_LENGTH] = "IntroDigitalCommunications:eecs354:mxb11:profbuchner";
+char header[MAX_HEADER_LENGTH] = DEFAULT_HEADER;
 
 #define MAX_SYMBOLS_LENGTH (MAX_DATA_LENGTH * 8/BITS_PER_SYMBOL)
 
 //overlap extra samples at the end get filled with the beginning for repeat transmission
-sample_t symbols[MAX_SYMBOLS_LENGTH + SRRC_OVERLAP]; //(2K * 4) * 4 = 32K
+sample_t symbols[MAX_SYMBOLS_LENGTH + MAX_PULSE_SYMBOLS]; //(2K * 4) * 4 = 32K
 
 sample_t envelope[OUTPUT_BUFFER_LENGTH]; //16K
 size_t envelope_samples_used;
@@ -55,36 +49,108 @@ uint8_t region_one[OUTPUT_BUFFER_LENGTH] USE_SECTION("SRAM1");
 uint8_t region_two[OUTPUT_BUFFER_LENGTH] USE_SECTION("SRAM2");
 
 
-encode_state encoder;
-convolve_state convolver;
-upconvert_state upconverter;
+bool new_message = true;
+
+encode_state encoder = {
+  .frame_len = DEFAULT_FRAME_LENGTH,
+  .start_framing = (uint8_t*)&header,
+  .start_framing_len = 40,
+  .end_framing = NULL,
+  .end_framing_len = 0
+};
+
+convolve_state convolver = {
+    .beta = DEFAULT_BETA, 
+    .overlap = DEFAULT_OVERLAP_SYMBOLS,
+    .M = DEFAULT_CONVOLVE_OVERSAMPLING
+};
+
+upconvert_state upconverter = {
+  .M = DEFAULT_UPCONVERT_OVERSAMPLING,
+  .N = DEFAULT_UPCONVERT_PERIOD
+};
+
 output_state output = {
-  .sample_rate = DEFAULT_SAMPLE_RATE,
+  .period = DEFAULT_OUTPUT_PERIOD,
   .region_one = region_one,
   .region_two = region_two,
   .output_buffer_length = OUTPUT_BUFFER_LENGTH
 };
 
+bool editing;
+void display_output_sample_rate(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time) {
+  if (editing || time & 0x10) {
+    //TODO: figure out why this factor is 8 and not 2
+    uint32_t sample_rate = SystemCoreClock / 8 / output.period;
+    uint32_t kHz = sample_rate / 1000;
+    uint32_t hundreds = (sample_rate % 1000) / 100;
+    size_t i = uint32_to_string(ui, UI_MAX_LENGTH, kHz);
+    ui[i++] = '.'; ui[i++] = '0' + hundreds;
+    ui[i++] = ' '; ui[i++] = 'k'; ui[i++] = 'H'; ui[i++] = 'z';
+    for (;i<UI_MAX_LENGTH;i++) ui[i] = ' ';
+  } else {
+    ui_display_name_only(ui, entry, time);
+  }
+}
+    
+bool change_output_sample_rate(const ui_entry* entry, ui_button button, uint32_t time) {
+  if (button & UI_BUTTON_ENTER) {
+    editing = !editing;
+  }
+  
+  if (editing) {
+    uint32_t* target = (uint32_t*)entry->user_data;
+    if (button & UI_BUTTON_UP) {
+      *target -= 1;
+      if (*target < 1) {
+        *target = 1;
+      } else {
+        if (!output_init(&output)) {
+          *target += 1;
+          output_init(&output);
+        }
+      }
+      return true;
+    }
+    if (button & UI_BUTTON_DOWN) {
+      *target += 1;
+      if (!output_init(&output)) {
+        *target -= 1;
+        output_init(&output);
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+
+size_t position;
+//string_editor assumes user_data is maxlength
+
 const ui_entry ui[] = {
   {.name = "Message:", .value = &message[0], .callback = ui_callback_none, .display = ui_display_name_only},
   {.name = "Framing:", .value = &header[0], .callback = ui_callback_none, .display = ui_display_name_only},
-  {.name = "Output sample rate:", .value = &output.sample_rate, .callback = ui_callback_none, .display = ui_display_name_only},
+  {.name = "Output sample rate:", .value = &output.period, .callback = ui_callback_none, .display = ui_display_name_only},
 };
 
 
 int main(void) {
 
-  size_t message_length = 0;
-  size_t symbols_length = 0;
-
+  size_t message_used = 0;
+  size_t message_position = 0;
+  
+  size_t data_used = 0;
+  size_t data_position = 0;
+  
+  size_t symbols_used = 0;
   size_t symbols_position = 0;
 
-  size_t symbols_per_buffer = 0;
-  bool new_message = true;
+  size_t envelope_samples_used = 0;
 
-  encode_init(&encoder, 100, (const uint8_t*)header, strlen(header), NULL, 0);
-  convolve_init_srrc(&convolver, 0.2, 4, 100); //baudrate = 10kHz
-  upconvert_init(&upconverter, 1, 10); //carrier = 100kHz if Fs = 1MHz
+  encode_init(&encoder);
+  convolve_init_srrc(&convolver); //baudrate = 10kHz
+  upconvert_init(&upconverter); //carrier = 100kHz if Fs = 1MHz
   
   ui_init(ui, sizeof(ui)/sizeof(ui[0]));
   
@@ -94,49 +160,66 @@ int main(void) {
     
     //TASKS
     
-    //1. Encode the message
+    //0. Check for new message 
     if (new_message == true) {
-      message_length = strlen(message);
-      size_t data_used =
-        frame_message(&encoder,
-                      (const uint8_t*)message,
-                      message_length,
-                      data,
-                      MAX_DATA_LENGTH);
-      //TODO: transmit partial message if message is too large to be framed (change in frame_message)
-      if (!data_used) {
-        //set_fault_light();
-      }
-      symbols_length = encode_data(&encoder, data, data_used, symbols, MAX_SYMBOLS_LENGTH);
-      memcpy(&symbols[symbols_length], &symbols[0], SRRC_OVERLAP * sizeof(sample_t));
-      symbols_length += SRRC_OVERLAP;
-      symbols_position = 0;
-
-      symbols_per_buffer = OUTPUT_BUFFER_LENGTH/convolver.M;
-      
-      new_message = false;
+      message_used = strlen(message);
+      message_position = 0;
+      data_used = 0;
+      symbols_used = 0;
+      envelope_samples_used = 0;
     }
     
-    //2. Make the envelope
+    //1. Frame the message into data
+    if (data_used == 0) {
+      message_position +=
+        frame_message(&encoder,
+                      (const uint8_t*)&message[message_position],
+                      message_used - message_position,
+                      data,
+                      MAX_DATA_LENGTH,
+                      &data_used);
+      
+      if (message_position >= message_used) {
+        message_position = 0;
+      }
+   }
+   
+   //2. Encode the data into symbols
+   if (symbols_used == 0) { 
+      //TODO: prepend the last overlap samples from the previous block
+      data_position += 
+        encode_data(&encoder, 
+                    &data[data_position], 
+                    data_used - data_position, 
+                    symbols, 
+                    MAX_SYMBOLS_LENGTH - convolver.overlap,
+                    &symbols_used);
+                    
+      if (data_position >= data_used) {
+        data_used = 0;
+      }
+      symbols_position = 0;
+    }
+    
+    //3. Make the envelope
     if (envelope_samples_used == 0) {
       memset(envelope, 0, OUTPUT_BUFFER_LENGTH * sizeof(envelope[0]));
-      size_t symbols_consumed =
+      symbols_position += 
         convolve(&convolver,
                  &symbols[symbols_position],
-                 (symbols_length - symbols_position < symbols_per_buffer)
-                    ? symbols_length - symbols_position : symbols_per_buffer,
+                 symbols_used - symbols_position,
                  envelope,
-                 OUTPUT_BUFFER_LENGTH);
-      symbols_position += symbols_consumed;
-      if (symbols_length - symbols_position <= SRRC_OVERLAP) {
-        symbols_position = 0;
+                 OUTPUT_BUFFER_LENGTH,
+                 &envelope_samples_used);
+
+      if (symbols_position + convolver.overlap >= symbols_used) {
+        //TODO:
+        symbols_used = 0;
       }
-      envelope_samples_used = convolver.M * symbols_consumed;
     }
     
-    //3. Upconvert the envelope
-    //Note that there will always be an envelope waiting for us at this point because we clear envelope_samples_used and the previous block runs first
-    if (output_get_buffer(&output)) {
+    //4. Upconvert the envelope and set it up for output
+    if (envelope_samples_used != 0 && output_get_buffer(&output)) {
       //dma is doing its thing, do the next block
       size_t fill_length = upconvert(&upconverter,
                               envelope,

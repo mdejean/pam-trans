@@ -96,7 +96,7 @@ void display_init() {
   
   gpiob_config.GPIO_Pin = 0x0001; //b1 = E  
   gpiob_config.GPIO_Mode = GPIO_Mode_OUT;
-  gpiob_config.GPIO_PuPd = GPIO_PuPd_Up;
+  gpiob_config.GPIO_PuPd = GPIO_PuPd_NOPULL;
   gpiob_config.GPIO_OType = GPIO_OType_OD;
   gpiob_config.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_Init(GPIOB, &gpiob_config);

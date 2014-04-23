@@ -89,14 +89,14 @@ void display_init() {
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
   gpioe_config.GPIO_Pin = 0xFF80; //pins 7-15 rs db0-7 (r/w always 0)
   gpioe_config.GPIO_Mode = GPIO_Mode_OUT;
-  gpioe_config.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  gpioe_config.GPIO_PuPd = GPIO_PuPd_UP;
   gpioe_config.GPIO_OType = GPIO_OType_OD;
   gpioe_config.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_Init(GPIOE, &gpioe_config);
   
-  gpiob_config.GPIO_Pin = 0x0001; //b1 = E  
+  gpiob_config.GPIO_Pin = 0x0001; //b0 = E  
   gpiob_config.GPIO_Mode = GPIO_Mode_OUT;
-  gpiob_config.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  gpiob_config.GPIO_PuPd = GPIO_PuPd_UP;
   gpiob_config.GPIO_OType = GPIO_OType_OD;
   gpiob_config.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_Init(GPIOB, &gpiob_config);

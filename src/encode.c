@@ -3,8 +3,8 @@
 
 bool encode_init(encode_state* s) {
   if (s->frame_len < 1) return false;
-  if (s->start_framing) return false;  
-  if (s->end_framing) return false;
+  if (s->start_framing == NULL && s->start_framing_len > 0) return false;  
+  if (s->end_framing == NULL && s->end_framing_len > 0) return false;
   return true;
 }
 
@@ -15,17 +15,20 @@ size_t frame_message(
     uint8_t* data, 
     size_t data_len,
     size_t* data_used) {
-  
+  //if we can't fit one full frame
   if (data_len < s->frame_len + s->start_framing_len + s->end_framing_len) {
     return 0;
   }
+  
   size_t data_pos = 0;
   
   size_t next_frame_len = s->frame_len;
   if (message_len < s->frame_len) {
     next_frame_len = message_len;
   }
+  
   size_t i;
+  
   for (i = 0; 
       i < message_len 
       && data_pos 
@@ -33,7 +36,7 @@ size_t frame_message(
         + next_frame_len 
         + s->end_framing_len
         < data_len;
-      i += s->frame_len) {
+      i += next_frame_len) {
     //add the start framing (if enabled)
     if (s->start_framing_len > 0) {
       memcpy(&data[data_pos], s->start_framing, s->start_framing_len);
@@ -50,8 +53,8 @@ size_t frame_message(
       data_pos += s->end_framing_len;
     }
     
-    //calculate the length of the next frame (how far are we from the end?)
-    if ((message_len - i) < (2 * s->frame_len)) {
+    //if less than one full frame of message left, use a smaller frame length
+    if (message_len - i < next_frame_len) {
       next_frame_len = message_len - i;
     }
   }

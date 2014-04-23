@@ -77,9 +77,168 @@ output_state output = {
   .output_buffer_length = OUTPUT_BUFFER_LENGTH
 };
 
+typedef bool(*on_update_cb)(void);
+
 bool editing;
+size_t position;
+    
+bool change_uint32(const ui_entry* entry, ui_button button, uint32_t time) {
+  bool ret = false;
+  if (button & UI_BUTTON_ENTER) {
+    editing = !editing;
+    ret = true;
+  }
+  
+  if (editing) {
+    uint32_t* target = (uint32_t*)entry->value;
+    on_update_cb onupdate = (on_update_cb)entry->user_data;  
+    if (button & UI_BUTTON_UP) {
+      *target += 1;
+      if (*target < 1) {
+        *target = 1;
+      } else {
+        if (!onupdate()) {
+          *target -= 1;
+          onupdate();
+        }
+      }
+      ret = true;
+    }
+    if (button & UI_BUTTON_DOWN) {
+      *target -= 1;
+      if (!onupdate()) {
+        *target += 1;
+        onupdate();
+      }
+      ret = true;
+    }
+  }
+  return ret;
+}
+
+bool change_uint32_backwards(const ui_entry* entry, ui_button button, uint32_t time) {
+  ui_button a = button;
+  if (button & UI_BUTTON_UP) {
+    a ^= UI_BUTTON_UP;
+    a |= UI_BUTTON_DOWN;
+  }
+  if (button & UI_BUTTON_DOWN) {
+    a ^= UI_BUTTON_DOWN;
+    a |= UI_BUTTON_UP;
+  }
+  return change_uint32(entry, button, time);
+}
+
+void display_uint32(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time) {
+  if (editing) {
+    size_t i = uint32_to_string(ui, UI_MAX_LENGTH, *(uint32_t*)entry->value);
+    for (;i<UI_MAX_LENGTH;i++) ui[i] = ' ';
+  } else {
+    ui_display_name_only(ui, entry, time);
+  }
+}
+
+void display_float(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time) {
+  if (editing) {
+    size_t i = float_to_string(ui, UI_MAX_LENGTH, *(uint32_t*)entry->value);
+    for (;i<UI_MAX_LENGTH;i++) ui[i] = ' ';
+  } else {
+    ui_display_name_only(ui, entry, time);
+  }
+}
+bool change_float(const ui_entry* entry, ui_button button, uint32_t time) {
+  bool ret = false;
+  if (button & UI_BUTTON_ENTER) {
+    editing = !editing;
+    position = 0;
+    ret = true;
+  }
+  
+  return ret;
+}
+
+typedef struct string_editor {
+  size_t max_length;
+  on_update_cb on_update;
+} string_editor;
+
+bool string_editor_callback(const ui_entry* entry, ui_button button, uint32_t time) {
+  bool ret = false;
+  string_editor* e = (string_editor*)entry->user_data;
+  char* s = (char*)entry->value;
+  if (button & UI_BUTTON_ENTER) {
+    editing = !editing;
+    position = 0;
+    ret = true;
+  }
+  if (editing) {
+    if (button & UI_BUTTON_UP) {
+      if (s[position] == 0 && position < e->max_length) {
+        s[position] = 'A';
+        s[position+1] = '\0';
+      } else {
+        s[position]++;
+      }
+    }
+    if (button & UI_BUTTON_DOWN) {
+      s[position]--;
+    }
+    if (button & UI_BUTTON_LEFT) {
+      if (position != 0) {
+        position--;
+      }
+    }
+    if (button & UI_BUTTON_RIGHT) {
+      if (s[position] != '\0') {
+        position++;
+      }
+    }
+    ret = true;
+  }
+  
+  return ret;
+}
+
+void string_editor_display(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time) {
+  if (editing) {
+    string_editor* e = (string_editor*)entry->user_data;
+    char* s = (char*)entry->value;
+    for (size_t i = 0; i < UI_MAX_LENGTH; i++) {
+      if (position + i > e->max_length) {
+        ui[i] = ' ';
+      } else {
+        ui[i] = s[position + i];
+      }
+    }
+  } else {
+    ui_display_name_only(ui, entry, time);
+  }
+}
+
+bool on_update_message() {
+  new_message = true;
+  return true;
+}
+
+bool on_update_framing() {
+  encoder.start_framing_len = strlen(header);
+  return encode_init(&encoder);
+}
+
+bool on_update_output() {
+  return output_init(&output);
+}
+
+bool on_update_upconvert() {
+  return upconvert_init(&upconverter);
+}
+
+bool on_update_convolve() {
+  return convolve_init_srrc(&convolver);
+}
+
 void display_output_sample_rate(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time) {
-  if (editing || time & 0x10) {
+  if (editing /*|| time & 0x10*/) { //todo: time-based update
     //TODO: figure out why this factor is 8 and not 2
     uint32_t sample_rate = SystemCoreClock / 8 / output.period;
     uint32_t kHz = sample_rate / 1000;
@@ -92,46 +251,82 @@ void display_output_sample_rate(char ui[UI_MAX_LENGTH], const ui_entry* entry, u
     ui_display_name_only(ui, entry, time);
   }
 }
-    
-bool change_output_sample_rate(const ui_entry* entry, ui_button button, uint32_t time) {
-  if (button & UI_BUTTON_ENTER) {
-    editing = !editing;
-  }
-  
+
+void display_symbol_rate(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time) {
   if (editing) {
-    uint32_t* target = (uint32_t*)entry->user_data;
-    if (button & UI_BUTTON_UP) {
-      *target -= 1;
-      if (*target < 1) {
-        *target = 1;
-      } else {
-        if (!output_init(&output)) {
-          *target += 1;
-          output_init(&output);
-        }
-      }
-      return true;
-    }
-    if (button & UI_BUTTON_DOWN) {
-      *target += 1;
-      if (!output_init(&output)) {
-        *target -= 1;
-        output_init(&output);
-      }
-      return true;
-    }
+    uint32_t symbol_rate = SystemCoreClock / 8 / output.period / *(uint32_t*)entry->value;
+    size_t i = uint32_to_string(ui, UI_MAX_LENGTH, symbol_rate / 1000);
+    size_t j = uint32_to_string(&ui[i], UI_MAX_LENGTH - i, 1000 + symbol_rate % 1000);
+    ui[i] = '.'; //fixme: this is janky
+    i += j;
+    strcpy(&ui[i], " kBaud"); //fixme: buffer overflow
+    i += 6;
+    for (;i<UI_MAX_LENGTH;i++) ui[i] = ' ';
+  } else {
+    ui_display_name_only(ui, entry, time);
   }
-  return false;
 }
 
+void display_carrier_freq(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time) {
+  if (editing) { //fixme: merge this and above into some sort of display_with_units
+    uint32_t carrier_freq = SystemCoreClock / 8 / output.period / *(uint32_t*)entry->value;
+    size_t i = uint32_to_string(ui, UI_MAX_LENGTH, carrier_freq / 1000);
+    size_t j = uint32_to_string(&ui[i], UI_MAX_LENGTH - i, 1000 + carrier_freq % 1000);
+    ui[i] = '.';
+    i += j;
+    strcpy(&ui[i], " kHz"); //fixme: buffer overflow
+    i += 4;
+    for (;i<UI_MAX_LENGTH;i++) ui[i] = ' ';
+  } else {
+    ui_display_name_only(ui, entry, time);
+  }
+}
 
-size_t position;
-//string_editor assumes user_data is maxlength
+const string_editor message_editor = {
+  .max_length = MAX_MESSAGE_LENGTH,
+  .on_update = on_update_message
+};
+const string_editor framing_editor = {
+  .max_length = MAX_HEADER_LENGTH,
+  .on_update = on_update_framing
+};
 
 const ui_entry ui[] = {
-  {.name = "Message:", .value = &message[0], .callback = ui_callback_none, .display = ui_display_name_only},
-  {.name = "Framing:", .value = &header[0], .callback = ui_callback_none, .display = ui_display_name_only},
-  {.name = "Output sample rate:", .value = &output.period, .callback = ui_callback_none, .display = ui_display_name_only},
+  {.name = "Message:", 
+   .value = &message[0], 
+   .callback = string_editor_callback, 
+   .display = string_editor_display,
+   .user_data = (void*)&message_editor},
+  {.name = "Framing:", 
+   .value = &header[0], 
+   .callback = string_editor_callback, 
+   .display = string_editor_display,
+   .user_data = (void*)&framing_editor},
+  {.name = "Output sample rate:", 
+   .value = &output.period, 
+   .callback = change_uint32_backwards, 
+   .display = display_output_sample_rate,
+   .user_data = on_update_output},
+  {.name = "Pulse overlap (syms)", 
+   .value = &convolver.overlap, 
+   .callback = change_uint32, 
+   .display = display_uint32,
+   .user_data = on_update_convolve},
+  {.name = "Baud (symbol) rate", 
+   .value = &convolver.M, 
+   .callback = change_uint32_backwards, 
+   .display = display_symbol_rate,
+   .user_data = on_update_convolve},
+  {.name = "Beta (pulse shape)", 
+   .value = &convolver.beta, 
+   .callback = change_float, 
+   .display = display_float,
+   .user_data = on_update_convolve},
+  {.name = "IF Carrier (f0)", 
+   .value = &upconverter.N, 
+   .callback = change_uint32_backwards, 
+   .display = display_carrier_freq,
+   .user_data = on_update_upconvert},
 };
 
 
@@ -155,6 +350,8 @@ int main(void) {
   ui_init(ui, sizeof(ui)/sizeof(ui[0]));
   
   output_init(&output);
+  
+  new_message = true;
 
   for (;;) {
     
@@ -165,8 +362,11 @@ int main(void) {
       message_used = strlen(message);
       message_position = 0;
       data_used = 0;
+      data_position = 0;
       symbols_used = 0;
+      symbols_position = 0;
       envelope_samples_used = 0;
+      new_message = false;
     }
     
     //1. Frame the message into data
@@ -182,6 +382,7 @@ int main(void) {
       if (message_position >= message_used) {
         message_position = 0;
       }
+      data_position = 0;
    }
    
    //2. Encode the data into symbols
@@ -213,9 +414,10 @@ int main(void) {
                  &envelope_samples_used);
 
       if (symbols_position + convolver.overlap >= symbols_used) {
-        //TODO:
+        //TODO: prepend the last overlap samples from the previous block
         symbols_used = 0;
       }
+      //upconvert/output run in one go, no position
     }
     
     //4. Upconvert the envelope and set it up for output

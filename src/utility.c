@@ -36,7 +36,7 @@ size_t uint32_to_string(char* s, size_t len, uint32_t n) {
   if (len < 11) return 0;
   //i apologize sincerely for the following
   int i=0;
-  #define J(K) if (n>K || i) { s[i++] = '0'+(n / K); n = n % K; }
+  #define J(K) if (n>=K || i) { s[i++] = '0'+(n / K); n = n % K; }
   J(1000000000);
   J(100000000);
   J(10000000);

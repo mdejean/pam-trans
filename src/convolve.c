@@ -7,6 +7,9 @@
 #include "sample.h"
 #include "convolve.h"
 
+//should actually be the 1/the sum of 2*overlap samples at the sample point
+#define FUDGE_FACTOR 0.8f
+
 //no malloc
 sample_t pulse_storage[MAX_PULSE_LENGTH];
 sample_t edge_symbols_storage[MAX_PULSE_SYMBOLS];
@@ -15,7 +18,7 @@ bool convolve_init_srrc(convolve_state* state) {
   if (state->overlap * 2 * state->M > MAX_PULSE_LENGTH) return false;
   if (state->overlap > MAX_PULSE_SYMBOLS) return false;
   state->pulse_shape_len = 2 * state->overlap * state->M;
-  state->amplitude_corr = (1+M_PI)/M_PI * 4.0f *state->beta/sqrtf((float)state->M) / 0.9f;
+  state->amplitude_corr = (1+M_PI)/M_PI * 4.0f *state->beta/sqrtf((float)state->M) / FUDGE_FACTOR;
   //singleton :(
   state->edge_symbols = edge_symbols_storage;
   memset(state->edge_symbols, 0, state->overlap * sizeof(sample_t));
@@ -24,8 +27,7 @@ bool convolve_init_srrc(convolve_state* state) {
   float k;
   for (size_t i = 0; i < state->pulse_shape_len; i++) {
     k = (float)i - state->pulse_shape_len/2 + 1e-5f; //should actually use sinc instead of this 1e-5 silliness
-    // 0.9 is a fudge factor, should actually be the 1/the sum of 2*overlap samples at the sample point
-    state->pulse_shape[i] = float_to_sample(M_PI/(1+M_PI) * 0.9f *
+    state->pulse_shape[i] = float_to_sample(M_PI/(1+M_PI) * FUDGE_FACTOR *
 
             (cosf( (1+state->beta) * M_PI * k/state->M) +   sinf((1-state->beta) * M_PI * k/state->M)
 //          (                                ----------------------------  )

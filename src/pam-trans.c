@@ -140,7 +140,7 @@ void display_uint32(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time
 
 void display_float(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time) {
   if (editing) {
-    size_t i = float_to_string(ui, UI_MAX_LENGTH, *(uint32_t*)entry->value);
+    size_t i = float_to_string(ui, UI_MAX_LENGTH, *(float*)entry->value);
     for (;i<UI_MAX_LENGTH;i++) ui[i] = ' ';
   } else {
     ui_display_name_only(ui, entry, time);
@@ -148,12 +148,22 @@ void display_float(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time)
 }
 bool change_float(const ui_entry* entry, ui_button button, uint32_t time) {
   bool ret = false;
+  float* target = (float*)entry->value;
   if (button & UI_BUTTON_ENTER) {
     editing = !editing;
     position = 0;
     ret = true;
   }
-  
+  if (button & UI_BUTTON_UP || button & UI_BUTTON_DOWN) {
+    if (position == 0) { //sign
+      *target = -*target;
+    } else if (position == SIGNIFICANT_FIGURES+1) {
+      *target /= powf(10,2*floor(log10f(target)));
+    }
+  }
+  if (time & 0x40) {
+    return true;
+  }
   return ret;
 }
 

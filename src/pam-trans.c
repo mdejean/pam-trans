@@ -1,4 +1,5 @@
 #include <string.h>
+#include <math.h>
 
 #include "stm32f4xx.h"
 #include "stm32f4xx_gpio.h"
@@ -158,7 +159,7 @@ bool change_float(const ui_entry* entry, ui_button button, uint32_t time) {
     if (position == 0) { //sign
       *target = -*target;
     } else if (position == SIGNIFICANT_FIGURES+1) {
-      *target /= powf(10,2*floor(log10f(target)));
+      *target /= powf(10,2*floorf(log10f(*target)));
     }
   }
   if (time & 0x40) {

@@ -104,15 +104,14 @@ void ui_tick() {
       prev_input = new_input;
       //soapbox: this could be written as a single if statement 
       //with short-circuit evaluation, but that would be dumb
-      if (input_change) {
-        if (ui_entries[current_entry].callback(&ui_entries[current_entry], input_change, time)) {
-          //something happened. update the display
+      
+      if (ui_entries[current_entry].callback(&ui_entries[current_entry], input_change, time)) {
+        //something happened. update the display
+        ui_refresh();
+      } else {
+        //button press not consumed - do default behaviors
+        if (ui_update(input_change)) {
           ui_refresh();
-        } else {
-          //button press not consumed - do default behaviors
-          if (ui_update(input_change)) {
-            ui_refresh();
-          }
         }
       }
       time++;

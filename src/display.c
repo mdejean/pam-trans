@@ -13,6 +13,7 @@
 
 GPIO_InitTypeDef gpioe_config;
 GPIO_InitTypeDef gpiob_config;
+TIM_TimeBaseInitTypeDef tim2;
 
 char character_to_write; 
 int display_cycle;
@@ -58,6 +59,9 @@ void TIM2_IRQHandler() {
       display_cycle = 0;
       switch (display_state) {
         case INIT1:
+          tim2.TIM_Period = DISPLAY_PERIOD;
+
+          TIM_TimeBaseInit(TIM2, &tim2);
         case INIT2:
         case INIT3:
           display_state++; //go to next init state or idle
@@ -101,9 +105,8 @@ void display_init() {
   gpiob_config.GPIO_Speed = GPIO_Speed_2MHz;
   GPIO_Init(GPIOB, &gpiob_config);
   
-  TIM_TimeBaseInitTypeDef tim2;
   /* Time base configuration */
-  tim2.TIM_Period = DISPLAY_PERIOD; // slow idk
+  tim2.TIM_Period = 100000;// first command needs to be extremely slow
   tim2.TIM_Prescaler = 0;
   tim2.TIM_ClockDivision = 0;
   tim2.TIM_CounterMode = TIM_CounterMode_Up;
@@ -113,6 +116,8 @@ void display_init() {
   TIM_SelectOutputTrigger(TIM2, TIM_TRGOSource_Update);
   
   TIM_ITConfig(TIM2, TIM_IT_Update, ENABLE);
+  
+  TIM_ClearITPendingBit(TIM2, TIM_IT_Update);
   
   NVIC_InitTypeDef tim2_irq;
   tim2_irq.NVIC_IRQChannel = TIM2_IRQn;
@@ -124,8 +129,9 @@ void display_init() {
   /* TIM2 enable counter */
   TIM_Cmd(TIM2, ENABLE);
   //set 8-bit, two line mode, enable display
+  for (volatile int i=0;i<100000;i++);
   GPIO_SetBits(GPIOE, 0x3F << 8);
-  display_cycle = 1;
+  display_cycle = 0;
   display_state = INIT1;
 }
 

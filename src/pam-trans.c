@@ -367,9 +367,9 @@ uint32_t transmit_count;
 
 void display_transmit_count(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time) {
   uint32_t n = *(uint32_t*) entry->value;
-  uint32_t i = 0;
-  for (;i<UI_MAX_LENGTH && entry->name[i]; i++) ui[i] = entry->name[i];
-  i += uint32_to_string(&ui[i], UI_MAX_LENGTH - i, n);
+  uint32_t i = uint32_to_string(ui, UI_MAX_LENGTH, n);
+  strncpy(&ui[i],entry->name,UI_MAX_LENGTH - i);
+  i += strlen(entry->name);
   for (;i<UI_MAX_LENGTH;i++) ui[i] = ' ';
 }
 
@@ -455,7 +455,7 @@ const ui_entry ui[] = {
    .value = DEFAULT_MESSAGE_C, 
    .callback = default_message_callback, 
    .display = default_message_display},
-  {.name = "Transmit count ", 
+  {.name = " transmissions", 
    .value = &transmit_count, 
    .callback = periodic_update, 
    .display = display_transmit_count},
@@ -557,9 +557,6 @@ int main(void) {
         symbols_used = 0;
       }
       
-      if (output_stalled()) {
-        stalls += 1;
-      }
       //upconvert/output run in one go, no position
     }
     
@@ -580,14 +577,15 @@ int main(void) {
     ui_tick();
       
     if (output_stalled()) {
+      stalls += 1;
       ui_set_status(ui_get_status() | 0x1); //TODO: give names to pins
     } else {
-      ui_set_status(ui_get_status() & ~0x1); //TODO: give names to pins
+      ui_set_status(ui_get_status() & ~0x1);
     }
     if (symbols_position == 0) {
       ui_set_status(ui_get_status() | 0x2);
     } else {
-      ui_set_status(ui_get_status() & ~0x2); //TODO: give names to pins
+      ui_set_status(ui_get_status() & ~0x2);
     }
   }
 }

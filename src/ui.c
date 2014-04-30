@@ -81,12 +81,12 @@ void ui_refresh() {
 }
 
 bool ui_update(uint16_t button) {
-  if (button & UI_BUTTON_UP) {
+  if (button & UI_BUTTON_DOWN) {
     current_entry = (current_entry + 1);
     if (current_entry >= num_entries) current_entry = 0;
     return true;
   }
-  if (button & UI_BUTTON_DOWN) {
+  if (button & UI_BUTTON_UP) {
     if (current_entry == 0) current_entry = num_entries;
     current_entry = (current_entry - 1);
     return true;

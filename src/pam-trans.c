@@ -122,12 +122,12 @@ bool change_uint32_backwards(const ui_entry* entry, ui_button button, uint32_t t
   if (button & UI_BUTTON_UP) {
     a ^= UI_BUTTON_UP;
     a |= UI_BUTTON_DOWN;
-  }
+  } 
   if (button & UI_BUTTON_DOWN) {
     a ^= UI_BUTTON_DOWN;
     a |= UI_BUTTON_UP;
   }
-  return change_uint32(entry, button, time);
+  return change_uint32(entry, a, time);
 }
 
 void display_uint32(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time) {
@@ -143,6 +143,7 @@ void display_float(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time)
   if (editing) {
     size_t i = float_to_string(ui, UI_MAX_LENGTH, *(float*)entry->value);
     for (;i<UI_MAX_LENGTH;i++) ui[i] = ' ';
+    if (time & 0x80) ui[position] = ' '; //blink
   } else {
     ui_display_name_only(ui, entry, time);
   }
@@ -155,15 +156,48 @@ bool change_float(const ui_entry* entry, ui_button button, uint32_t time) {
     position = 0;
     ret = true;
   }
-  if (button & UI_BUTTON_UP || button & UI_BUTTON_DOWN) {
-    if (position == 0) { //sign
-      *target = -*target;
-    } else if (position == SIGNIFICANT_FIGURES+1) {
-      *target /= powf(10,2*floorf(log10f(*target)));
+  if (editing) {
+    if (button & UI_BUTTON_UP || button & UI_BUTTON_DOWN) {
+      if (position == 0) { //sign
+        *target = -*target;
+      } else if (position == SIGNIFICANT_FIGURES+1) {
+        *target /= powf(10,2*floorf(log10f(*target)));
+      } else if (position > SIGNIFICANT_FIGURES+1) {
+        if (button & UI_BUTTON_DOWN) {
+          *target /= 10;
+        } else {
+          *target *= 10;
+        }
+      } else if (position == 2) {
+        
+      } else {
+        float factor = powf(10,2*floorf(log10f(*target)));
+        if (button & UI_BUTTON_DOWN) {
+          factor = -factor;
+        }
+        if (position > 2) {
+          factor *= powf(10, -(position-3));
+        }
+        *target += factor; 
+      }
+        
+      ret = true;
     }
-  }
-  if (time & 0x40) {
-    return true;
+    if (button & UI_BUTTON_LEFT) {
+      if (position > 0) {
+        position--;
+      }
+      ret = true;
+    }
+    if (button & UI_BUTTON_RIGHT) {
+      if (position < SIGNIFICANT_FIGURES+5) {
+        position++;
+      }
+      ret = true;
+    }
+    if (time & 0x40) {
+      ret = true;
+    }
   }
   return ret;
 }
@@ -204,7 +238,9 @@ bool string_editor_callback(const ui_entry* entry, ui_button button, uint32_t ti
         position++;
       }
     }
-    ret = true;
+    if (time & 0x40 || button) {
+      ret = true;
+    }
   }
   
   return ret;
@@ -221,6 +257,7 @@ void string_editor_display(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32
         ui[i] = s[position + i];
       }
     }
+    if (time & 0x80) ui[0] = ' '; //blink
   } else {
     ui_display_name_only(ui, entry, time);
   }

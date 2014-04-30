@@ -12,7 +12,7 @@ size_t float_to_string(char* s, size_t len, float f) {
   } else {
     s[0] = '+';
   }
-  int exponent_10 = floorf(log10f(f)); 
+  int exponent_10 = floorf(log10f(f)) + 0.01f; 
   int n = f * powf(10, -exponent_10 - 1 + SIGNIFICANT_FIGURES);
   int i;
   for (i = SIGNIFICANT_FIGURES+1; i > 0; i--) {

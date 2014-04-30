@@ -30,7 +30,7 @@ signal_s - size of that buffer
 size_t upconvert(upconvert_state* s,
   const sample_t* envelope,
   size_t envelope_len,
-  uint8_t* signal,
+  uint16_t* signal,
   size_t signal_s);
 
 #endif

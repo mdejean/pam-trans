@@ -10,8 +10,8 @@
 
 
 //these global variables are the output state set up in output_init
-uint8_t* front_buffer;
-uint8_t* back_buffer;
+uint16_t* front_buffer;
+uint16_t* back_buffer;
 size_t back_fill_length;
 /*at startup we wait for the buffer to be filled before first transmitting 
  *  this is the same as being stalled */
@@ -37,7 +37,7 @@ void update_period(uint32_t period) {
   TIM_Cmd(TIM6, ENABLE);
 }
 
-void set_dma_buffer(const uint8_t* buffer, size_t length) {
+void set_dma_buffer(const uint16_t* buffer, size_t length) {
   DMA_Cmd(DMA1_Stream6, DISABLE); //stop DMA so that we can adjust it
 
   //probably unnecessary wait
@@ -68,7 +68,7 @@ void swap_buffers() {
     return;
   } else {
     set_dma_buffer(back_buffer, back_fill_length);
-    uint8_t* temp = back_buffer;
+    uint16_t* temp = back_buffer;
     back_buffer = front_buffer;
     front_buffer = temp;
     back_fill_length = 0;
@@ -115,14 +115,14 @@ bool output_init(output_state* o) {
     }
 
     dma_config.DMA_Channel = DMA_Channel_7;
-    dma_config.DMA_PeripheralBaseAddr = (uint32_t)&(DAC->DHR8R2); //8 bit samples TODO: switch to 12-bit
+    dma_config.DMA_PeripheralBaseAddr = (uint32_t)&(DAC->DHR12R2); //8 bit samples TODO: switch to 12-bit
     //dma_config.DMA_Memory0BaseAddr = (uint32_t)being_transmitted;
     dma_config.DMA_DIR = DMA_DIR_MemoryToPeripheral;
     //dma_config.DMA_BufferSize = 0; filled by set_dma_buffer
     dma_config.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
     dma_config.DMA_MemoryInc = DMA_MemoryInc_Enable;
-    dma_config.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
-    dma_config.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+    dma_config.DMA_PeripheralDataSize = DMA_PeripheralDataSize_HalfWord;
+    dma_config.DMA_MemoryDataSize = DMA_MemoryDataSize_HalfWord;
     dma_config.DMA_Mode = DMA_Mode_Normal;
     dma_config.DMA_Priority = DMA_Priority_High;
     dma_config.DMA_FIFOMode = DMA_FIFOMode_Disable;
@@ -154,7 +154,7 @@ bool output_init(output_state* o) {
 }
 
 
-uint8_t* output_get_buffer(output_state* o) {
+uint16_t* output_get_buffer(output_state* o) {
   if (back_fill_length > 0) {
     return NULL;
   } else {

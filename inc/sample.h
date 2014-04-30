@@ -27,8 +27,8 @@ SAMPLE_INLINE sample_t float_to_sample(float a) {
   return (sample_t)( a * SAMPLE_MAX );
 }
 
-SAMPLE_INLINE uint8_t sample_to_uint8(sample_t a) {
-  return (uint8_t)(128 + (a / (SAMPLE_MAX/256)));
+SAMPLE_INLINE uint16_t sample_to_12bit(sample_t a) {
+  return (uint16_t)(2048 + (a / (SAMPLE_MAX/4096)));
 }
 
 #endif

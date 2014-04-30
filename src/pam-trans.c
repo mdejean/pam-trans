@@ -202,6 +202,29 @@ bool change_float(const ui_entry* entry, ui_button button, uint32_t time) {
   return ret;
 }
 
+bool default_message_callback(const ui_entry* entry, ui_button button, uint32_t time) {
+  const char* new = (const char*)entry->value;
+  if (button & UI_BUTTON_ENTER) {
+    strncpy(message, new, MAX_MESSAGE_LENGTH);
+    editing = 1;
+    new_message = true;
+    return true;
+  }
+  if (button & UI_BUTTON_UP || button & UI_BUTTON_DOWN) {
+    editing = 0;
+    return false;
+  }
+  return false;
+}
+
+void default_message_display(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time) {
+  if (editing == 1) {
+    strncpy(ui, "Message changed!   ", UI_MAX_LENGTH);
+  } else {
+    ui_display_name_only(ui, entry, time);
+  }
+}
+
 typedef struct string_editor {
   size_t max_length;
   on_update_cb on_update;
@@ -320,7 +343,7 @@ void display_carrier_freq(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_
     uint32_t carrier_freq = SystemCoreClock / 8 / output.period / *(uint32_t*)entry->value;
     size_t i = uint32_to_string(ui, UI_MAX_LENGTH, carrier_freq / 1000);
     size_t j = uint32_to_string(&ui[i], UI_MAX_LENGTH - i, 1000 + carrier_freq % 1000);
-    ui[i] = '.';
+    ui[i] = '.'; //overwrite the "1" that we added 1000 for
     i += j;
     strcpy(&ui[i], " kHz"); //fixme: buffer overflow
     i += 4;
@@ -328,6 +351,43 @@ void display_carrier_freq(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_
   } else {
     ui_display_name_only(ui, entry, time);
   }
+}
+
+
+bool periodic_update(const ui_entry* entry, ui_button button, uint32_t time) {
+  static uint32_t next;
+  if (time > next) {
+    next = time + 60; //fixme
+    return true;
+  }
+  return false;
+}
+
+uint32_t transmit_count;
+
+void display_transmit_count(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time) {
+  uint32_t n = *(uint32_t*) entry->value;
+  uint32_t i = 0;
+  for (;i<UI_MAX_LENGTH && entry->name[i]; i++) ui[i] = entry->name[i];
+  i += uint32_to_string(&ui[i], UI_MAX_LENGTH - i, n);
+  for (;i<UI_MAX_LENGTH;i++) ui[i] = ' ';
+}
+
+uint32_t stalls;
+
+void display_stalls(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time) {
+  size_t i = uint32_to_string(ui, UI_MAX_LENGTH, stalls);
+  strncpy(&ui[i], " stalls", UI_MAX_LENGTH - i);
+}
+
+bool reset_stalls(const ui_entry* entry, ui_button button, uint32_t time) {
+  if (button & UI_BUTTON_ENTER) {
+    stalls = 0;
+    return true;
+  }
+  
+  if (!button) return true; //always update
+  return false;
 }
 
 const string_editor message_editor = {
@@ -340,16 +400,24 @@ const string_editor framing_editor = {
 };
 
 const ui_entry ui[] = {
-  {.name = "Message:", 
+  {.name = "PAM Transmitter", 
+   .callback = ui_callback_none, 
+   .display = ui_display_name_only},
+  {.name = "Message", 
    .value = &message[0], 
    .callback = string_editor_callback, 
    .display = string_editor_display,
    .user_data = (void*)&message_editor},
-  {.name = "Framing:", 
+  {.name = "Framing", 
    .value = &header[0], 
    .callback = string_editor_callback, 
    .display = string_editor_display,
    .user_data = (void*)&framing_editor},
+  {.name = "Frame length", 
+   .value = &encoder.frame_len, 
+   .callback = change_uint32, 
+   .display = display_uint32,
+   .user_data = on_update_convolve},
   {.name = "Output sample rate:", 
    .value = &output.period, 
    .callback = change_uint32_backwards, 
@@ -375,6 +443,25 @@ const ui_entry ui[] = {
    .callback = change_uint32_backwards, 
    .display = display_carrier_freq,
    .user_data = on_update_upconvert},
+  {.name = "Default message A", 
+   .value = DEFAULT_MESSAGE, 
+   .callback = default_message_callback, 
+   .display = default_message_display},
+  {.name = "Default message B", 
+   .value = DEFAULT_MESSAGE_B, 
+   .callback = default_message_callback, 
+   .display = default_message_display},
+  {.name = "Default message C", 
+   .value = DEFAULT_MESSAGE_C, 
+   .callback = default_message_callback, 
+   .display = default_message_display},
+  {.name = "Transmit count ", 
+   .value = &transmit_count, 
+   .callback = periodic_update, 
+   .display = display_transmit_count},
+  {.value = &stalls, 
+   .callback = reset_stalls, 
+   .display = display_stalls},
 };
 
 
@@ -414,6 +501,9 @@ int main(void) {
       symbols_used = 0;
       symbols_position = 0;
       envelope_samples_used = 0;
+      
+      transmit_count = 0;
+      
       new_message = false;
     }
     
@@ -429,6 +519,7 @@ int main(void) {
       
       if (message_position >= message_used) {
         message_position = 0;
+        transmit_count++;
       }
       data_position = 0;
    }
@@ -470,6 +561,9 @@ int main(void) {
     
     //4. Upconvert the envelope and set it up for output
     if (envelope_samples_used != 0 && output_get_buffer(&output)) {
+      if (output_stalled()) {
+        stalls += 1;
+      }
       //dma is doing its thing, do the next block
       size_t fill_length = upconvert(&upconverter,
                               envelope,

@@ -11,6 +11,13 @@
 "the period was so far like the present period, that some of its noisiest authorities insisted on its being " \
 "received, for good or for evil, in the superlative degree of comparison only."
 
+#define DEFAULT_MESSAGE_B \
+"This is a short message to test the Pulse Amplitude Modulation Digital Radio Transmitter"
+
+#define DEFAULT_MESSAGE_C \
+"Messages are broken up into frames of (by default) 100 characters. Though all of these messages are text, "\
+"the PAM transmitter is capable of transmitting any binary data."
+
 #define DEFAULT_HEADER "IntroDigitalCommunications:eecs354:mxb11:profbuchner"
 #define DEFAULT_FRAME_LENGTH 100
 

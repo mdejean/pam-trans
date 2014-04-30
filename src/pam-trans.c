@@ -46,8 +46,8 @@ size_t envelope_samples_used;
 // without stalling the processor
 //this has a side effect of making us unable to use most of SRAM1 (most of the processor's memory)
 #define USE_SECTION(a) __attribute__ ((section ((a))))
-uint8_t region_one[OUTPUT_BUFFER_LENGTH] USE_SECTION("SRAM1");
-uint8_t region_two[OUTPUT_BUFFER_LENGTH] USE_SECTION("SRAM2");
+uint16_t region_one[OUTPUT_BUFFER_LENGTH] USE_SECTION("SRAM1");
+uint16_t region_two[OUTPUT_BUFFER_LENGTH] USE_SECTION("SRAM2");
 
 
 bool new_message = true;
@@ -556,14 +556,15 @@ int main(void) {
         //TODO: prepend the last overlap samples from the previous block
         symbols_used = 0;
       }
+      
+      if (output_stalled()) {
+        stalls += 1;
+      }
       //upconvert/output run in one go, no position
     }
     
     //4. Upconvert the envelope and set it up for output
     if (envelope_samples_used != 0 && output_get_buffer(&output)) {
-      if (output_stalled()) {
-        stalls += 1;
-      }
       //dma is doing its thing, do the next block
       size_t fill_length = upconvert(&upconverter,
                               envelope,
@@ -575,9 +576,9 @@ int main(void) {
       envelope_samples_used = 0;
     }
     
-    //4. Update the UI
+    //5. Update the UI
     ui_tick();
-    
+      
     if (output_stalled()) {
       ui_set_status(ui_get_status() | 0x1); //TODO: give names to pins
     } else {

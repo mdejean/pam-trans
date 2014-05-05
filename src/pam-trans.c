@@ -68,7 +68,8 @@ convolve_state convolver = {
 
 upconvert_state upconverter = {
   .M = DEFAULT_UPCONVERT_OVERSAMPLING,
-  .N = DEFAULT_UPCONVERT_PERIOD
+  .N = DEFAULT_UPCONVERT_PERIOD,
+  .amplitude = 1.0
 };
 
 output_state output = {
@@ -390,6 +391,50 @@ bool reset_stalls(const ui_entry* entry, ui_button button, uint32_t time) {
   return false;
 }
 
+void display_output_power(char ui[UI_MAX_LENGTH], const ui_entry* entry, uint32_t time) {
+  int32_t powerdb = 20 * log10f(upconverter.amplitude/convolver.amplitude_corr);
+  strncpy(ui, entry->name, UI_MAX_LENGTH);
+  size_t i = strlen(entry->name);
+  if (editing && time & 0x40) {
+    for (;i<UI_MAX_LENGTH;i++) ui[i] = ' ';
+  } else {
+    if (powerdb < 0) {
+      ui[i++] = '-';
+    } else {
+      ui[i++] = '+';
+    }
+    ui[i++] = '0' + powerdb / 10;
+    ui[i++] = '0' + powerdb % 10;
+    ui[i++] = 'd'; ui[i++] = 'B'; ui[i++] = 'f'; ui[i++] = 's';
+  }
+}
+bool change_output_power(const ui_entry* entry, ui_button button, uint32_t time) {
+  if (button & UI_BUTTON_ENTER) {
+    editing = 1;
+    return true;
+  }
+  if (editing) {
+    if (button & UI_BUTTON_UP) {
+      upconverter.amplitude *= 1.1;
+      if (!upconvert_init(&upconverter)) {
+        upconverter.amplitude /= 1.1;
+        upconvert_init(&upconverter);
+      }  
+      return true;
+    }
+    if (button & UI_BUTTON_DOWN) {
+      upconverter.amplitude /= 1.1;
+      if (!upconvert_init(&upconverter)) {
+        upconverter.amplitude *= 1.1;
+        upconvert_init(&upconverter);
+      }  
+      return true;
+    }
+  }
+  return false;
+}
+
+
 const string_editor message_editor = {
   .max_length = MAX_MESSAGE_LENGTH,
   .on_update = on_update_message
@@ -443,6 +488,10 @@ const ui_entry ui[] = {
    .callback = change_uint32_backwards, 
    .display = display_carrier_freq,
    .user_data = on_update_upconvert},
+  {.name = "Output power ", 
+   .value = &upconverter.amplitude, 
+   .callback = change_output_power, 
+   .display = display_output_power},
   {.name = "Default message A", 
    .value = DEFAULT_MESSAGE, 
    .callback = default_message_callback, 

@@ -12,7 +12,7 @@ bool upconvert_init(upconvert_state* s) {
   s->phase = 0;
   s->carrier = carrier_storage;
   for (size_t i = 0; i < s->N; i++) {
-    s->carrier[i] = float_to_sample(cosf((i*2.0f*M_PI) / s->N));
+    s->carrier[i] = float_to_sample(s->amplitude * cosf((i*2.0f*M_PI) / s->N));
   }
   return true;
 }

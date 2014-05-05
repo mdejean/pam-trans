@@ -11,6 +11,7 @@
 typedef struct upconvert_state_ {
   size_t M; //carrier samples per envelope sample
   size_t N; //carrier length in samples
+  float amplitude;
   //carrier frequency = baud rate * envelope upsampling factor * M/N
   sample_t* carrier;
   size_t phase; //current position in the carrier
